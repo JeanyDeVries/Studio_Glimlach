@@ -32,6 +32,10 @@ COPY . .
 # Install PHP dependencies (verbose so build logs show any failures)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --verbose
 
+# Install Sage theme dependencies (theme has its own composer.json)
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    --working-dir=web/app/themes/studio_glimlach
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/web \
     && chmod -R 755 /var/www/html/web
