@@ -10,9 +10,7 @@
       @if(!empty($attributes->imageId))
         {!! wp_get_attachment_image($attributes->imageId, 'large', false, ['style' => 'width:100%; height:100%; object-fit:cover;']) !!}
       @else
-        <div class="ph" style="background:var(--cream); width:100%; height:100%;">
-          <div class="ph-label">Zelfportret</div>
-        </div>
+        <div class="ph" style="background:var(--cream); width:100%; height:100%;"></div>
       @endif
     </div>
     

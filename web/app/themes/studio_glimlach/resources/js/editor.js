@@ -512,4 +512,79 @@ domReady(() => {
     },
     save: () => null
   });
+
+  // 10. Price Overview
+  registerBlockType('sg/prices', {
+    title: 'Price Overview', icon: 'tag', category: 'theme',
+    description: 'Display your photoshoot packages with name, subtitle, price, and included services.',
+    attributes: {
+      heading:    { type: 'string', default: 'Onze <span class="italic">tarieven</span>' },
+      eyebrow:    { type: 'string', default: 'Transparante prijzen' },
+      sectionNum: { type: 'string', default: 'N°04' },
+      note:       { type: 'string', default: 'Alle prijzen zijn inclusief online galerij en twee weken recht op downloaden. Reiskosten buiten een straal van 15 km worden apart besproken.' },
+      packages: {
+        type: 'array',
+        default: [
+          { name: 'Newborn shoot',  sub: '0 – 2 weken',      price: '€ 295', includes: 'Thuis of in studio · 1,5 uur · 15+ bewerkte foto\'s' },
+          { name: 'Baby & sitter',  sub: '3 – 12 maanden',    price: '€ 245', includes: 'Studio · 1 uur · 12+ bewerkte foto\'s' },
+          { name: 'Gezinsshoot',    sub: 'Alle leeftijden',   price: '€ 275', includes: 'Buiten of thuis · 1,5 uur · 15+ bewerkte foto\'s' },
+          { name: 'Mini shoot',     sub: 'Snel & intiem',     price: '€ 149', includes: 'Studio · 30 min · 6 bewerkte foto\'s' },
+        ]
+      }
+    },
+    edit: ({ attributes, setAttributes }) => {
+      const updatePkg = (index, key, val) => {
+        const pkgs = [...attributes.packages];
+        pkgs[index] = { ...pkgs[index], [key]: val };
+        setAttributes({ packages: pkgs });
+      };
+
+      const pkgElements = attributes.packages.map((pkg, i) =>
+        el('div', {
+          key: i,
+          style: { marginBottom: '12px', background: '#f8f9f9', padding: '16px', borderRadius: '4px', border: '1px solid #ddd' }
+        },
+          el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' } },
+            el('strong', { style: { fontSize: '13px' } }, `Package ${i + 1}`),
+            el(Button, {
+              isDestructive: true, variant: 'link',
+              onClick: () => {
+                const pkgs = [...attributes.packages];
+                pkgs.splice(i, 1);
+                setAttributes({ packages: pkgs });
+              }
+            }, '✕ Remove')
+          ),
+          el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } },
+            el(TextControl, { label: 'Name',     value: pkg.name,     onChange: v => updatePkg(i, 'name', v) }),
+            el(TextControl, { label: 'Subtitle', value: pkg.sub,      onChange: v => updatePkg(i, 'sub', v) }),
+            el(TextControl, { label: 'Price (e.g. € 295)', value: pkg.price, onChange: v => updatePkg(i, 'price', v) }),
+            el(TextControl, { label: 'Includes', value: pkg.includes, onChange: v => updatePkg(i, 'includes', v) })
+          )
+        )
+      );
+
+      return el(BlockEditorForm, { title: 'Price Overview' },
+        el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } }, 'List your photoshoot packages with a price and short description. Each card links to the booking modal.'),
+        el(FormField, null,
+          el(TextControl, { label: 'Section Number', value: attributes.sectionNum, onChange: v => setAttributes({ sectionNum: v }) }),
+          el(TextControl, { label: 'Eyebrow', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) })
+        ),
+        el(WysiwygField, { label: 'Heading', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
+        el(FormField, null,
+          el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '12px' } }, 'Packages'),
+          ...pkgElements,
+          el(Button, {
+            isSecondary: true,
+            style: { marginTop: '8px' },
+            onClick: () => setAttributes({ packages: [...attributes.packages, { name: 'Nieuwe shoot', sub: '', price: '€ 0', includes: '' }] })
+          }, '+ Add package')
+        ),
+        el(FormField, null,
+          el(TextareaControl, { label: 'Footnote', value: attributes.note, onChange: v => setAttributes({ note: v }), help: 'Shown below the grid in italic. E.g. pricing notes, travel costs.' })
+        )
+      );
+    },
+    save: () => null
+  });
 });

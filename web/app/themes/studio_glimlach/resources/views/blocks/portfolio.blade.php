@@ -8,18 +8,16 @@
   <div class="portfolio reveal">
     @php
       $images = $attributes->images ?? [];
-      $count  = max(1, min(12, intval($attributes->numberOfImages ?? 8)));
+      $count  = max(1, min(12, intval($attributes->numberOfImages ?? 6)));
       $tones  = ['clay', 'sage', 'warm', 'cream', 'muted', 'sand', 'deep', 'sage', 'clay', 'sage', 'warm', 'cream'];
     @endphp
 
     @for ($i = 0; $i < $count; $i++)
-      <div class="p{{ $i + 1 }}">
+      <div class="p{{ $i + 1 }} portfolio-cell">
         @if(isset($images[$i]) && !empty($images[$i]['id']))
           {!! wp_get_attachment_image($images[$i]['id'], 'large', false, ['style' => 'width:100%; height:100%; object-fit:cover;']) !!}
         @else
-          <div class="ph" style="background:var(--{{ $tones[$i] ?? 'clay' }}); width:100%; height:100%;">
-            <div class="ph-label">Portfolio beeld {{ $i + 1 }}</div>
-          </div>
+          <div class="ph" style="background:var(--{{ $tones[$i] ?? 'clay' }}); width:100%; height:100%;"></div>
         @endif
       </div>
     @endfor

@@ -13,7 +13,8 @@ add_action('init', function () {
         'faq',
         'instagram',
         'cta',
-        'appointment'
+        'appointment',
+        'prices'
     ];
 
     foreach ($blocks as $block) {
@@ -41,6 +42,7 @@ add_filter('allowed_block_types_all', function ($allowed_blocks, $editor_context
         'sg/faq',
         'sg/instagram',
         'sg/cta',
-        'sg/appointment'
+        'sg/appointment',
+        'sg/prices'
     ];
 }, 10, 2);

@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+web/app/cache
+*.log
+phpunit.xml
+.phpunit.result.cache
+.phpunit.cache
+tests
+example

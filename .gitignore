@@ -1,6 +1,8 @@
 # Application
 web/app/plugins/*
 !web/app/plugins/.gitkeep
+# NOTE: web/app/themes/studio_glimlach/public/build is intentionally tracked
+# so Railway can serve compiled assets without a separate build step.
 # Ignore Composer-installed mu-plugin directories; single-file mu-plugins are tracked intentionally
 web/app/mu-plugins/*/
 web/app/themes/twentytwentyfive/
