@@ -20,14 +20,17 @@ COPY nginx.conf /etc/nginx/sites-available/default
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Allow Composer to run as root (required in Docker)
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 # Set working directory
 WORKDIR /var/www/html
 
 # Copy project files
 COPY . .
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install PHP dependencies (verbose so build logs show any failures)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --verbose
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/web \
