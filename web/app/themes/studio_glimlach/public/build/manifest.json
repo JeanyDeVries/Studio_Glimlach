@@ -21,6 +21,10 @@
     "src": "resources/css/editor.css",
     "isEntry": true
   },
+  "resources/images/logo.webp": {
+    "file": "assets/logo-DLPnQuDa.webp",
+    "src": "resources/images/logo.webp"
+  },
   "resources/js/app.js": {
     "file": "assets/app-QmZdSgeO.js",
     "name": "app",
