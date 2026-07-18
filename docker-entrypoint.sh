@@ -26,5 +26,13 @@ EOF
 mkdir -p /var/www/html/web/app/uploads
 chown -R www-data:www-data /var/www/html/web/app/uploads
 
-# Start Apache
-exec "$@"
+# Railway sets PORT env variable — update Nginx to use it
+PORT=${PORT:-80}
+sed -i "s/listen 80;/listen ${PORT};/" /etc/nginx/sites-available/default
+sed -i "s/listen 80;/listen ${PORT};/" /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+echo "Starting PHP-FPM..."
+php-fpm -D
+
+echo "Starting Nginx on port ${PORT}..."
+exec nginx -g 'daemon off;'
