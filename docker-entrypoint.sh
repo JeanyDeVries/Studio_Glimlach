@@ -1,35 +1,55 @@
 #!/bin/bash
 set -e
 
-# Write the .env file from Railway environment variables
-cat > /var/www/html/.env <<EOF
-DB_NAME=${DB_NAME}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-DB_HOST=${DB_HOST:-localhost}
+echo "Generating .env file..."
 
-WP_ENV=${WP_ENV:-production}
-WP_HOME=${WP_HOME}
-WP_SITEURL=${WP_HOME}/wp
+# Use PHP to safely write .env — avoids bash heredoc mangling
+# special characters ($, !, backticks) that appear in WordPress salt keys
+php -r "
+\$vars = [
+    'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST',
+    'WP_ENV', 'WP_HOME',
+    'AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY',
+    'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT',
+];
 
-AUTH_KEY='${AUTH_KEY}'
-SECURE_AUTH_KEY='${SECURE_AUTH_KEY}'
-LOGGED_IN_KEY='${LOGGED_IN_KEY}'
-NONCE_KEY='${NONCE_KEY}'
-AUTH_SALT='${AUTH_SALT}'
-SECURE_AUTH_SALT='${SECURE_AUTH_SALT}'
-LOGGED_IN_SALT='${LOGGED_IN_SALT}'
-NONCE_SALT='${NONCE_SALT}'
-EOF
+\$lines = [];
+foreach (\$vars as \$var) {
+    \$value = getenv(\$var);
+    if (\$value !== false) {
+        \$lines[] = \$var . '=' . \$value;
+    }
+}
 
-# Create uploads directory if it doesn't exist
+// DB_HOST default
+if (!getenv('DB_HOST')) {
+    \$lines[] = 'DB_HOST=mysql.railway.internal';
+}
+
+// WP_SITEURL derived from WP_HOME
+\$wpHome = getenv('WP_HOME');
+if (\$wpHome) {
+    \$lines[] = 'WP_SITEURL=' . \$wpHome . '/wp';
+}
+
+// Enable debug logging (errors go to /var/www/html/web/app/debug.log)
+\$lines[] = 'WP_DEBUG=true';
+\$lines[] = 'WP_DEBUG_LOG=true';
+\$lines[] = 'WP_DEBUG_DISPLAY=false';
+
+file_put_contents('/var/www/html/.env', implode(PHP_EOL, \$lines) . PHP_EOL);
+echo 'Done.' . PHP_EOL;
+"
+
+# Create required directories
 mkdir -p /var/www/html/web/app/uploads
+mkdir -p /var/www/html/web/app/cache
 chown -R www-data:www-data /var/www/html/web/app/uploads
+chown -R www-data:www-data /var/www/html/web/app/cache
 
-# Railway sets PORT env variable — update Nginx to use it
+# Railway assigns a dynamic port via $PORT env variable
 PORT=${PORT:-80}
 sed -i "s/listen 80;/listen ${PORT};/" /etc/nginx/sites-available/default
-sed -i "s/listen 80;/listen ${PORT};/" /etc/nginx/sites-enabled/default 2>/dev/null || true
 
 echo "Starting PHP-FPM..."
 php-fpm -D
