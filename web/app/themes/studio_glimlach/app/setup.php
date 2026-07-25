@@ -28,23 +28,26 @@ add_filter('block_editor_settings_all', function ($settings) {
  *
  * @return void
  */
-add_action('admin_head', function () {
-    if (! get_current_screen()?->is_block_editor()) {
+add_action('enqueue_block_editor_assets', function () {
+    if (Vite::isRunningHot()) {
+        // In dev mode, Vite outputs a <script type="module"> which is naturally deferred
+        add_action('admin_head', function () {
+            echo Vite::withEntryPoints(['resources/js/editor.js'])->toHtml();
+        });
         return;
     }
 
-    if (! Vite::isRunningHot()) {
-        $dependencies = json_decode(Vite::content('editor.deps.json'));
+    // In production, enqueue as a proper WP footer script so it runs
+    // AFTER wp-blocks, wp-element, etc. are already loaded.
+    $dependencies = (array) json_decode(Vite::content('editor.deps.json'));
 
-        foreach ($dependencies as $dependency) {
-            if (! wp_script_is($dependency)) {
-                wp_enqueue_script($dependency);
-            }
-        }
-    }
-    echo Vite::withEntryPoints([
-        'resources/js/editor.js',
-    ])->toHtml();
+    wp_enqueue_script(
+        'sg-editor',
+        Vite::asset('resources/js/editor.js'),
+        $dependencies,
+        null,
+        true // in_footer = true
+    );
 });
 
 /**
