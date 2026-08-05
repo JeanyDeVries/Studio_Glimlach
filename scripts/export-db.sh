@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================
-# Export local WordPress DB for Railway
+# Export local WordPress DB
 # Usage: bash scripts/export-db.sh
 # =========================================
 
@@ -23,5 +23,7 @@ mysqldump \
 echo "✅ Done! File saved as: ${EXPORT_FILE}"
 echo ""
 echo "Next steps:"
-echo "  1. Import this file into your Railway MySQL database"
-echo "  2. Run: mysql -h HOST -u USER -p DATABASE < ${EXPORT_FILE}"
+echo "  1. Import this file into your remote MySQL database:"
+echo "     mysql -h HOST -u USER -p DATABASE < ${EXPORT_FILE}"
+echo "  2. Update URLs in the database for the new domain:"
+echo "     wp search-replace 'http://studio-glimlach.test' 'https://your-new-domain.com'"
