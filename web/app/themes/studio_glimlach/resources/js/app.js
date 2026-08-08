@@ -86,11 +86,32 @@ document.addEventListener('DOMContentLoaded', () => {
     els.forEach(el => io.observe(el));
   }
 
-  // 2. Booking Modal
-  const modalContainer = document.getElementById('booking-modal-container');
-  if (modalContainer) {
-    // move modal outside to body
+  // 2. Booking Modal — self-bootstrapping so it works on every page,
+  //    even when the appointment block is not placed in Gutenberg.
+  let modalContainer = document.getElementById('booking-modal-container');
+  if (!modalContainer) {
+    // No appointment block on this page — create the modal DOM ourselves
+    modalContainer = document.createElement('div');
+    modalContainer.id = 'booking-modal-container';
+    modalContainer.style.display = 'none';
+    modalContainer.innerHTML = `
+      <div class="modal-overlay" id="booking-modal-overlay">
+        <div class="modal" id="booking-modal-content" onclick="event.stopPropagation()">
+          <button class="modal-close" onclick="document.dispatchEvent(new CustomEvent('closeBookingModal'))">&#x00D7;</button>
+          <div id="booking-app"
+               data-shoot-types='[{"id":"newborn","label":"Newborn","sub":"0 \u2013 2 weken"},{"id":"baby","label":"Baby &amp; sitter","sub":"3 \u2013 12 maanden"},{"id":"gezin","label":"Gezinsshoot","sub":"Alle leeftijden"},{"id":"verjaardag","label":"Eerste verjaardag","sub":"11 \u2013 14 maanden"},{"id":"zwanger","label":"Zwangerschap","sub":"Vanaf 30 weken"},{"id":"koppel","label":"Koppel","sub":"Met z\u2019n twee\u00EBn"}]'
+               data-success-msg="Je hoort binnen 24 uur van ons met een bevestiging.">
+          </div>
+        </div>
+      </div>
+    `;
     document.body.appendChild(modalContainer);
+  } else {
+    // Appointment block exists — move it to body root so z-index stacking works
+    document.body.appendChild(modalContainer);
+  }
+
+  if (modalContainer) {
     
     document.addEventListener('openBookingModal', () => {
       modalContainer.style.display = 'block';

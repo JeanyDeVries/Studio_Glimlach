@@ -1,4 +1,6 @@
 @php
+  $bg = $attributes->backgroundColor ?? '#CDD4B2';
+  $fg = $attributes->textColor       ?? '#000000';
   $testimonials = new WP_Query([
     'post_type' => 'sg_testimonial',
     'posts_per_page' => 3,
@@ -6,7 +8,7 @@
     'order' => 'ASC'
   ]);
 @endphp
-<section class="testimonials {{ $attributes->className ?? '' }}">
+<section class="testimonials {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
   <div class="shell" style="padding: 0;">
     <div class="section-head reveal" style="border-color: rgba(0,0,0,0.15);">
       <div class="section-num">N°04</div>

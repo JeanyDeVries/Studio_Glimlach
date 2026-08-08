@@ -1,8 +1,10 @@
 @php
+  $bg = $attributes->backgroundColor ?? '#F2E9DE';
+  $fg = $attributes->textColor       ?? '#000000';
   $images = $attributes->images ?? [];
   $tones = ['clay', 'sage', 'warm', 'cream', 'muted', 'deep'];
 @endphp
-<section class="section shell {{ $attributes->className ?? '' }}">
+<section class="section shell {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
   <div class="insta-head reveal">
     <div class="eyebrow">{{ $attributes->eyebrow ?? 'Volg ons dagelijks' }}</div>
     <a href="{{ $attributes->handleUrl ?? '#' }}" target="_blank" class="insta-handle">{{ $attributes->handleText ?? '@studio.glimlach' }}</a>

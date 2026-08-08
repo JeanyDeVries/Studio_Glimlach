@@ -14,7 +14,9 @@ add_action('init', function () {
         'instagram',
         'cta',
         'appointment',
-        'prices'
+        'prices',
+        'package-detail',
+        'footer'
     ];
 
     foreach ($blocks as $block) {
@@ -43,6 +45,8 @@ add_filter('allowed_block_types_all', function ($allowed_blocks, $editor_context
         'sg/instagram',
         'sg/cta',
         'sg/appointment',
-        'sg/prices'
+        'sg/prices',
+        'sg/package-detail',
+        'sg/footer'
     ];
 }, 10, 2);

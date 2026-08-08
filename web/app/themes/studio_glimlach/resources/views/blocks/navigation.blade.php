@@ -5,9 +5,11 @@
   $ctaText  = $attributes->ctaText ?? 'Plan afspraak';
   $ctaUrl   = $attributes->ctaUrl ?? '';
   $ctaIsBooking = $attributes->ctaIsBooking ?? true;
+  $bg = $attributes->backgroundColor ?? '#F2E9DE';
+  $fg = $attributes->textColor       ?? '#000000';
 @endphp
 
-<header class="sg-nav {{ $attributes->className ?? '' }}">
+<header class="sg-nav {{ $attributes->className ?? '' }}" style="--nav-bg: {{ $bg }}; --nav-fg: {{ $fg }}; background: color-mix(in oklab, {{ $bg }} 92%, transparent); color: {{ $fg }};">
   <div class="sg-nav-inner">
 
     {{-- Logo --}}
@@ -17,7 +19,7 @@
       @elseif($logoUrl)
         <img src="{{ $logoUrl }}" alt="{{ get_bloginfo('name') }}" />
       @else
-        <span class="sg-nav-logo-text script">{{ get_bloginfo('name') }}</span>
+        <span class="sg-nav-logo-text script" style="color: {{ $fg }};">{{ get_bloginfo('name') }}</span>
       @endif
     </a>
 
@@ -26,7 +28,7 @@
       <ul class="sg-nav-list">
         @foreach($navItems as $item)
           <li>
-            <a href="{{ $item['url'] ?? '#' }}"
+            <a href="{{ $item['url'] ?? '#' }}" style="color: {{ $fg }};"
                @if(!empty($item['newTab'])) target="_blank" rel="noopener" @endif>
               {{ $item['label'] ?? '' }}
             </a>
@@ -46,7 +48,7 @@
 
     {{-- Mobile hamburger --}}
     <button class="sg-nav-hamburger" id="sg-nav-toggle" aria-label="Menu openen" aria-expanded="false">
-      <span></span><span></span><span></span>
+      <span style="background: {{ $fg }};"></span><span style="background: {{ $fg }};"></span><span style="background: {{ $fg }};"></span>
     </button>
   </div>
 </header>
