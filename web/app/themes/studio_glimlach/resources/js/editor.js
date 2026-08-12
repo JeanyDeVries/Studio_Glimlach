@@ -395,6 +395,188 @@ domReady(() => {
     save: () => null
   });
 
+  // 3b. Portfolio Full (dedicated portfolio page block)
+  registerBlockType('sg/portfolio-full', {
+    title: 'Portfolio — Volledig overzicht', icon: 'images-alt2', category: 'theme',
+    description: 'Full portfolio page with masonry grid, category filters, and a booking CTA.',
+    attributes: {
+      backgroundColor:  { type: 'string', default: '#F2E9DE' },
+      textColor:        { type: 'string', default: '#000000' },
+      heading:          { type: 'string', default: 'Ons <span class="italic" style="font-weight:300;">portfolio</span>' },
+      eyebrow:          { type: 'string', default: 'Alle shoots · 2024–2026' },
+      sectionNum:       { type: 'string', default: 'N°03' },
+      ctaText:          { type: 'string', default: 'Wil je ook zulke herinneringen vastleggen?' },
+      // Each shoot = { name: string, images: [{id, url}] }
+      shoots:           { type: 'array',  default: [] },
+    },
+    edit: ({ attributes, setAttributes }) => {
+      const shoots = attributes.shoots || [];
+
+      // ── Shoot helpers ───────────────────────────────────────────────────────────────
+      const addShoot = () =>
+        setAttributes({ shoots: [...shoots, { name: 'Nieuwe categorie', images: [] }] });
+
+      const removeShoot = (si) => {
+        const next = [...shoots];
+        next.splice(si, 1);
+        setAttributes({ shoots: next });
+      };
+
+      const updateShootName = (si, val) => {
+        const next = shoots.map((s, i) => i === si ? { ...s, name: val } : s);
+        setAttributes({ shoots: next });
+      };
+
+      const addImageToShoot = (si) => {
+        const next = shoots.map((s, i) =>
+          i === si ? { ...s, images: [...(s.images || []), { id: null, url: '' }] } : s
+        );
+        setAttributes({ shoots: next });
+      };
+
+      const updateShootImage = (si, ii, media) => {
+        const next = shoots.map((s, i) => {
+          if (i !== si) return s;
+          const imgs = [...(s.images || [])];
+          imgs[ii] = { id: media.id, url: media.url };
+          return { ...s, images: imgs };
+        });
+        setAttributes({ shoots: next });
+      };
+
+      const removeShootImage = (si, ii) => {
+        const next = shoots.map((s, i) => {
+          if (i !== si) return s;
+          const imgs = [...(s.images || [])];
+          imgs.splice(ii, 1);
+          return { ...s, images: imgs };
+        });
+        setAttributes({ shoots: next });
+      };
+
+      // ── Shoot UI ────────────────────────────────────────────────────────────────
+      const shootSectionStyle = {
+        border: '1px solid #ddd',
+        borderRadius: '6px',
+        marginBottom: '16px',
+        overflow: 'hidden',
+      };
+      const shootHeaderStyle = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '12px 14px',
+        background: '#f0f0f0',
+        borderBottom: '1px solid #ddd',
+      };
+
+      const shootEls = shoots.map((shoot, si) => {
+        const imgEls = (shoot.images || []).map((img, ii) =>
+          el('div', { key: ii, style: { position: 'relative' } },
+            el(ImageSelect, {
+              label: `Foto ${ii + 1}`,
+              value: img,
+              onChange: m => updateShootImage(si, ii, m),
+            }),
+            el(Button, {
+              isDestructive: true,
+              variant: 'link',
+              style: { fontSize: '11px', marginTop: '-4px', paddingLeft: 0 },
+              onClick: () => removeShootImage(si, ii),
+            }, '✕ Verwijder foto')
+          )
+        );
+
+        return el('div', { key: si, style: shootSectionStyle },
+          el('div', { style: shootHeaderStyle },
+            el('div', { style: { flex: 1 } },
+              el(TextControl, {
+                label: 'Categorienaam',
+                value: shoot.name,
+                onChange: v => updateShootName(si, v),
+              })
+            ),
+            el(Button, {
+              isDestructive: true,
+              variant: 'secondary',
+              style: { flexShrink: 0, marginTop: '24px' },
+              onClick: () => removeShoot(si),
+            }, '✕ Verwijder categorie')
+          ),
+          el('div', { style: { padding: '14px' } },
+            imgEls.length === 0
+              ? el('p', { style: { color: '#999', fontSize: '12px', margin: '0 0 12px' } }, 'Nog geen foto\'s. Voeg er een toe.')
+              : el('div', {
+                  style: {
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px',
+                    marginBottom: '12px',
+                  }
+                }, ...imgEls),
+            el(Button, {
+              isSecondary: true,
+              onClick: () => addImageToShoot(si),
+            }, '+ Foto toevoegen')
+          )
+        );
+      });
+
+      return el('div', null,
+        el(ColorPanel, {
+          backgroundColor: attributes.backgroundColor,
+          textColor: attributes.textColor,
+          onChangeBackground: v => setAttributes({ backgroundColor: v }),
+          onChangeText: v => setAttributes({ textColor: v }),
+        }),
+        el(BlockEditorForm, { title: 'Portfolio — Volledig overzicht' },
+          el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } },
+            "Voeg categorieën toe en selecteer per categorie de foto's. Alle foto's zijn zichtbaar op de pagina; bezoekers kunnen filteren per categorie."
+          ),
+
+          el(FormField, null,
+            el(TextControl, { label: 'Sectienummer', value: attributes.sectionNum, onChange: v => setAttributes({ sectionNum: v }) }),
+            el(TextControl, { label: 'Eyebrow tekst', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) }),
+          ),
+          el(WysiwygField, { label: 'Koptekst', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
+          el(FormField, null,
+            el(TextControl, { label: 'CTA-tekst (boven de Plan afspraak knop)', value: attributes.ctaText, onChange: v => setAttributes({ ctaText: v }) })
+          ),
+
+          el('div', { style: { marginTop: '8px' } },
+            el('div', {
+              style: {
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+                paddingBottom: '8px',
+                borderBottom: '1px solid #eee',
+              }
+            },
+              el('div', null,
+                el('p', {
+                  style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#333', margin: 0 }
+                }, "Categorieën & foto's"),
+                el('p', { style: { fontSize: '11px', color: '#999', margin: '4px 0 0' } },
+                  shoots.length === 0
+                    ? "Nog geen categorieën. Voeg er een toe om te beginnen."
+                    : `${shoots.length} ${shoots.length === 1 ? 'categorie' : 'categorieën'} · ${shoots.reduce((n, s) => n + (s.images || []).length, 0)} foto's`
+                )
+              ),
+              el(Button, {
+                isPrimary: true,
+                onClick: addShoot,
+              }, '+ Categorie toevoegen')
+            ),
+            ...shootEls
+          )
+        )
+      );
+    },
+    save: () => null
+  });
+
 
   // 4. Testimonials
   registerBlockType('sg/testimonials', {

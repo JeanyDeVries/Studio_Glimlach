@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mobile hamburger toggle
     const toggle = document.getElementById('sg-nav-toggle');
-    const links  = sgNav.querySelector('.sg-nav-links');
+    const links = sgNav.querySelector('.sg-nav-links');
     if (toggle && links) {
       toggle.addEventListener('click', () => {
         const expanded = toggle.getAttribute('aria-expanded') === 'true';
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (modalContainer) {
-    
+
     document.addEventListener('openBookingModal', () => {
       modalContainer.style.display = 'block';
       renderBookingForm(); // re-render to reset state
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('closeBookingModal', () => {
       modalContainer.style.display = 'none';
     });
-    
+
     // allow clicking on overlay to close
     const overlay = document.getElementById('booking-modal-overlay');
     if (overlay) {
@@ -137,21 +137,23 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         shootTypes = JSON.parse(appDiv.getAttribute('data-shoot-types') || '[]');
         successMsg = appDiv.getAttribute('data-success-msg') || successMsg;
-      } catch (e) {}
+      } catch (e) { }
     }
 
-    // state
     let step = 1;
-    let data = { type: '', date: '', name: '', email: '', phone: '', note: '' };
+    let data = { type: '', dates: ['', '', ''], name: '', email: '', phone: '', note: '' };
 
     const renderBookingForm = () => {
       if (!appDiv) return;
-      
+
       const updateData = (k, v) => { data[k] = v; renderBookingForm(); };
-      const canNext = step === 1 ? (!!data.type && !!data.date) : (data.name && data.email);
+      const updateDate = (i, v) => { data.dates[i] = v; renderBookingForm(); };
+      const canNext = step === 1
+        ? (!!data.type && data.dates.filter(d => !!d).length >= 3)
+        : (data.name && data.email);
 
       let content = '';
-      
+
       if (step === 3) {
         const typeObj = shootTypes.find(t => t.id === data.type);
         const typeLabel = typeObj ? typeObj.label.toLowerCase() : 'shoot';
@@ -160,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="script">Dankjewel!</span>
             <h2 class="h-2" style="margin-top: 20px;">We nemen snel contact op</h2>
             <p class="body" style="margin-top: 16px; max-width: 380px; margin-left: auto; margin-right: auto;">
-              Je verzoek voor een <strong>${typeLabel}</strong> rond <strong>${data.date}</strong> is binnen. ${successMsg}
+              Je verzoek voor een <strong>${typeLabel}</strong> is binnen. Je voorkeurdatums: <strong>${data.dates.filter(d => d).join(', ')}</strong>. ${successMsg}
             </p>
             <button class="btn" style="margin-top: 32px;" onclick="document.dispatchEvent(new CustomEvent('closeBookingModal'))">Sluiten</button>
           </div>
@@ -181,8 +183,21 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
           <div class="form-row">
-            <label>Voorkeursdatum</label>
-            <input type="date" id="st-date" value="${data.date}" />
+            <label>Voorkeurdatum</label>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--mute); width: 36px; flex-shrink: 0;">1e</span>
+                <input type="date" id="st-date-0" value="${data.dates[0]}" style="flex: 1;" />
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--mute); width: 36px; flex-shrink: 0;">2e</span>
+                <input type="date" id="st-date-1" value="${data.dates[1]}" style="flex: 1;" />
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--mute); width: 36px; flex-shrink: 0;">3e</span>
+                <input type="date" id="st-date-2" value="${data.dates[2]}" style="flex: 1;" />
+              </div>
+            </div>
           </div>
         `;
 
@@ -208,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content = `
           <div class="eyebrow" style="margin-bottom: 12px;">Stap ${step} van 2</div>
           <h2 class="h-2">Plan je <span class="script" style="color: var(--terracotta);">shoot</span></h2>
-          <p class="modal-sub">Kies het type shoot en een voorkeursdatum — we nemen daarna persoonlijk contact op om alles vast te leggen.</p>
+          <p class="modal-sub">Kies het type shoot en minimaal 3 voorkeurdatums — we nemen daarna persoonlijk contact op om alles vast te leggen.</p>
           
           <div>
             ${step === 1 ? step1Html : step2Html}
@@ -230,10 +245,12 @@ document.addEventListener('DOMContentLoaded', () => {
         appDiv.querySelectorAll('.shoot-type').forEach(b => {
           b.addEventListener('click', (e) => { e.preventDefault(); updateData('type', b.getAttribute('data-id')); });
         });
-        const dateInput = document.getElementById('st-date');
-        if (dateInput) {
-          dateInput.addEventListener('input', (e) => { updateData('date', e.target.value); });
-        }
+        [0, 1, 2].forEach(i => {
+          const dateInput = document.getElementById('st-date-' + i);
+          if (dateInput) {
+            dateInput.addEventListener('input', (e) => { updateDate(i, e.target.value); });
+          }
+        });
       } else if (step === 2) {
         ['name', 'email', 'phone', 'note'].forEach(field => {
           const input = document.getElementById('st-' + field);
@@ -280,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     };
-    
+
     renderBookingForm();
   }
 });

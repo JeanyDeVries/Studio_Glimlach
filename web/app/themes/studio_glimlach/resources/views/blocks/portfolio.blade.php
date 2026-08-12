@@ -19,9 +19,9 @@
     @for ($i = 0; $i < $count; $i++)
       <div class="p{{ $i + 1 }} portfolio-cell">
         @if(isset($images[$i]) && !empty($images[$i]['id']))
-          {!! wp_get_attachment_image($images[$i]['id'], 'large', false, ['style' => 'width:100%; height:100%; object-fit:cover;']) !!}
+          {!! wp_get_attachment_image($images[$i]['id'], 'large', false, ['style' => 'width:100%; height:auto; display:block;']) !!}
         @else
-          <div class="ph" style="background:var(--{{ $tones[$i] ?? 'clay' }}); width:100%; height:100%;"></div>
+          <div class="ph" style="background:var(--{{ $tones[$i] ?? 'clay' }}); width:100%; aspect-ratio: {{ ($i % 2 === 0) ? '3/4' : '4/3' }};"></div>
         @endif
       </div>
     @endfor
