@@ -1,5 +1,15 @@
 @php
-  $navItems = $attributes->navItems ?? [];
+  $navItems = $attributes->navItems ?? null;
+  // WordPress only serializes attributes that differ from JS defaults.
+  // If navItems was never explicitly saved, fall back to the default links.
+  if (empty($navItems)) {
+    $navItems = [
+      ['label' => 'Over ons',  'url' => '#over',      'newTab' => false],
+      ['label' => 'Portfolio', 'url' => '#portfolio',  'newTab' => false],
+      ['label' => 'Blog',      'url' => '#blog',       'newTab' => false],
+      ['label' => 'Contact',   'url' => '#contact',    'newTab' => false],
+    ];
+  }
   $logoId   = $attributes->logoId ?? null;
   $logoUrl  = $attributes->logoUrl ?? null;
   $ctaText  = $attributes->ctaText ?? 'Plan afspraak';

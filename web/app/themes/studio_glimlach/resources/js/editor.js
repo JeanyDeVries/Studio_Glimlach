@@ -2,7 +2,7 @@ import domReady from '@wordpress/dom-ready';
 import { registerBlockType } from '@wordpress/blocks';
 import { createElement, useState } from '@wordpress/element';
 import { MediaUpload, MediaUploadCheck, useBlockProps, RichText, InspectorControls, PanelColorSettings } from '@wordpress/block-editor';
-import { TextControl, TextareaControl, Button } from '@wordpress/components';
+import { TextControl, TextareaControl, SelectControl, Button } from '@wordpress/components';
 
 const el = createElement;
 
@@ -979,7 +979,188 @@ domReady(() => {
     save: () => null
   });
 
-  // 12. Footer
+  // 12. Blog Archive (full blog overview page block)
+  registerBlockType('sg/blog-archive', {
+    title: 'Blog — Volledig overzicht', icon: 'admin-post', category: 'theme',
+    description: 'Blog archive page: hero header, category filter pills, and a manually curated grid of posts with links.',
+    attributes: {
+      backgroundColor: { type: 'string', default: '#F2E9DE' },
+      textColor:        { type: 'string', default: '#000000' },
+      eyebrow:  { type: 'string', default: 'Ons dagboek' },
+      heading:  { type: 'string', default: 'Verhalen uit <br /><span class="script" style="color: var(--terracotta);">de studio</span>' },
+      subtext:  { type: 'string', default: 'Shoot-verhalen, persoonlijke stukken en kleine dingen die we onderweg meemaken.' },
+      // Categories = filter pills: [{key, label}]
+      // Each category group has posts: [{title, excerpt, date, tag, imageId, imageUrl, url, tone}]
+      categories: {
+        type: 'array',
+        default: []
+      },
+    },
+    edit: ({ attributes, setAttributes }) => {
+      const cats = attributes.categories || [];
+
+      // ── Tone options for placeholder color ─────────────────────────
+      const toneOptions = [
+        { label: 'Clay',    value: 'clay'   },
+        { label: 'Sage',    value: 'sage'   },
+        { label: 'Warm',    value: 'warm'   },
+        { label: 'Cream',   value: 'cream'  },
+        { label: 'Muted',   value: 'muted'  },
+        { label: 'Sand',    value: 'sand'   },
+        { label: 'Deep',    value: 'deep'   },
+      ];
+
+      // ── Category helpers ───────────────────────────────────────────
+      const addCat = () =>
+        setAttributes({ categories: [...cats, { key: 'nieuw', label: 'Nieuwe categorie', posts: [] }] });
+
+      const removeCat = (ci) => {
+        const next = [...cats]; next.splice(ci, 1);
+        setAttributes({ categories: next });
+      };
+
+      const updateCat = (ci, field, val) => {
+        const next = cats.map((c, i) => i === ci ? { ...c, [field]: val } : c);
+        setAttributes({ categories: next });
+      };
+
+      // ── Post helpers ───────────────────────────────────────────────
+      const addPost = (ci) => {
+        const next = cats.map((c, i) => i !== ci ? c : {
+          ...c, posts: [...(c.posts || []), {
+            title: '', excerpt: '', date: '', tag: '', imageId: null, imageUrl: '', url: '', tone: 'clay'
+          }]
+        });
+        setAttributes({ categories: next });
+      };
+
+      const removePost = (ci, pi) => {
+        const next = cats.map((c, i) => {
+          if (i !== ci) return c;
+          const posts = [...(c.posts || [])]; posts.splice(pi, 1);
+          return { ...c, posts };
+        });
+        setAttributes({ categories: next });
+      };
+
+      const updatePost = (ci, pi, field, val) => {
+        const next = cats.map((c, i) => {
+          if (i !== ci) return c;
+          const posts = (c.posts || []).map((p, j) => j === pi ? { ...p, [field]: val } : p);
+          return { ...c, posts };
+        });
+        setAttributes({ categories: next });
+      };
+
+      const updatePostImage = (ci, pi, media) => {
+        updatePost(ci, pi, 'imageId', media.id);
+        const next = cats.map((c, i) => {
+          if (i !== ci) return c;
+          const posts = (c.posts || []).map((p, j) =>
+            j === pi ? { ...p, imageId: media.id, imageUrl: media.url } : p
+          );
+          return { ...c, posts };
+        });
+        setAttributes({ categories: next });
+      };
+
+      // ── UI ─────────────────────────────────────────────────────────
+      const catStyle = { border: '1px solid #ddd', borderRadius: '6px', marginBottom: '16px', overflow: 'hidden' };
+      const catHeaderStyle = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#f0f0f0', borderBottom: '1px solid #ddd' };
+      const postCardStyle  = { border: '1px solid #e8e8e8', borderRadius: '4px', padding: '12px', marginBottom: '10px', background: '#fafafa' };
+
+      const catEls = cats.map((cat, ci) => {
+        const postEls = (cat.posts || []).map((post, pi) =>
+          el('div', { key: pi, style: postCardStyle },
+            el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' } },
+              el('strong', { style: { fontSize: '12px', color: '#555' } }, `Bericht ${pi + 1}`),
+              el(Button, { isDestructive: true, variant: 'link', style: { fontSize: '11px' }, onClick: () => removePost(ci, pi) }, '✕ Verwijder')
+            ),
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
+              el(TextControl, { label: 'Titel',   value: post.title,   onChange: v => updatePost(ci, pi, 'title',   v) }),
+              el(TextControl, { label: 'Tag (weergegeven in meta)', value: post.tag, onChange: v => updatePost(ci, pi, 'tag', v) }),
+              el(TextControl, { label: 'Datum',   value: post.date,    onChange: v => updatePost(ci, pi, 'date',    v) }),
+              el(TextControl, { label: 'URL (link naar het bericht)', value: post.url, onChange: v => updatePost(ci, pi, 'url', v) }),
+            ),
+            el(TextareaControl, { label: 'Samenvatting', value: post.excerpt, rows: 2, onChange: v => updatePost(ci, pi, 'excerpt', v) }),
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' } },
+              el(ImageSelect, {
+                label: 'Afbeelding',
+                value: { id: post.imageId, url: post.imageUrl },
+                onChange: m => updatePostImage(ci, pi, m),
+              }),
+              el(SelectControl, {
+                label: 'Plaatshouder kleur (als geen foto)',
+                value: post.tone || 'clay',
+                options: toneOptions,
+                onChange: v => updatePost(ci, pi, 'tone', v),
+              })
+            )
+          )
+        );
+
+        return el('div', { key: ci, style: catStyle },
+          el('div', { style: catHeaderStyle },
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', flex: 1 } },
+              el(TextControl, { label: 'Categorienaam (weergegeven op knop)', value: cat.label, onChange: v => updateCat(ci, 'label', v) }),
+              el(TextControl, { label: 'Categorieslug (intern, bijv. "shoots")', value: cat.key, onChange: v => updateCat(ci, 'key', v) }),
+            ),
+            el(Button, { isDestructive: true, variant: 'secondary', style: { flexShrink: 0, marginTop: '24px' }, onClick: () => removeCat(ci) }, '✕ Verwijder')
+          ),
+          el('div', { style: { padding: '12px 14px' } },
+            postEls.length === 0
+              ? el('p', { style: { color: '#999', fontSize: '12px', margin: '0 0 10px' } }, 'Geen berichten. Klik op "+ Bericht toevoegen".')
+              : postEls,
+            el(Button, { isSecondary: true, onClick: () => addPost(ci) }, '+ Bericht toevoegen')
+          )
+        );
+      });
+
+      const totalPosts = cats.reduce((n, c) => n + (c.posts || []).length, 0);
+
+      return el('div', null,
+        el(ColorPanel, {
+          backgroundColor: attributes.backgroundColor,
+          textColor: attributes.textColor,
+          onChangeBackground: v => setAttributes({ backgroundColor: v }),
+          onChangeText:       v => setAttributes({ textColor: v }),
+        }),
+        el(BlockEditorForm, { title: 'Blog — Volledig overzicht' },
+          el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } },
+            "Voeg categorieën toe en vul per categorie de berichten in. Bezoekers zien alle berichten en kunnen filteren per categorie."
+          ),
+
+          // ── Hero meta ──────────────────────────────────────────
+          el(FormField, null,
+            el(TextControl, { label: 'Eyebrow', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) }),
+          ),
+          el(WysiwygField, { label: 'Koptekst (HTML toegestaan — gebruik <span class="script"> voor handschrift)', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
+          el(WysiwygField, { label: 'Subtekst', value: attributes.subtext, onChange: v => setAttributes({ subtext: v }) }),
+
+          // ── Categories & posts ─────────────────────────────────
+          el('div', { style: { marginTop: '8px' } },
+            el('div', {
+              style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee' }
+            },
+              el('div', null,
+                el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#333', margin: 0 } }, "Categorieën & berichten"),
+                el('p', { style: { fontSize: '11px', color: '#999', margin: '4px 0 0' } },
+                  cats.length === 0
+                    ? "Nog geen categorieën. Voeg er een toe."
+                    : `${cats.length} ${cats.length === 1 ? 'categorie' : 'categorieën'} · ${totalPosts} berichten`
+                )
+              ),
+              el(Button, { isPrimary: true, onClick: addCat }, '+ Categorie toevoegen')
+            ),
+            ...catEls
+          )
+        )
+      );
+    },
+    save: () => null
+  });
+
+  // 13. Footer
   registerBlockType('sg/footer', {
     title: 'Site Footer', icon: 'flag', category: 'theme',
     description: 'The site-wide footer with studio info, navigation, contact details, location, and social media links.',
