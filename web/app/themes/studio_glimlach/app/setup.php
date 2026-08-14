@@ -191,6 +191,32 @@ add_action('init', function () {
         'show_in_rest' => true,
     ]);
 
+    // Blog Map — tags pages so they appear in "Verder lezen" sections.
+    // Create a term (e.g. "blogposts") and assign it to any page you want
+    // to show as a "read more" suggestion in the blog-post block.
+    register_taxonomy('sg_blog_folder', 'page', [
+        'labels' => [
+            'name'                       => __('Blog Mappen', 'sage'),
+            'singular_name'              => __('Blog Map', 'sage'),
+            'add_new_item'               => __('Nieuwe map toevoegen', 'sage'),
+            'new_item_name'              => __('Mapnaam', 'sage'),
+            'search_items'               => __('Mappen zoeken', 'sage'),
+            'all_items'                  => __('Alle mappen', 'sage'),
+            'edit_item'                  => __('Map bewerken', 'sage'),
+            'update_item'                => __('Map bijwerken', 'sage'),
+            'add_or_remove_items'        => __('Toevoegen of verwijderen', 'sage'),
+            'choose_from_most_used'      => __('Meest gebruikt', 'sage'),
+        ],
+        'public'            => false,
+        'show_ui'           => true,
+        'show_in_rest'      => true,    // makes it appear in Gutenberg sidebar
+        'hierarchical'      => true,    // true = checkboxes in editor, false = tag input
+        'show_in_nav_menus' => false,
+        'show_admin_column' => true,    // shows the column in Pages list
+        'rewrite'           => false,
+    ]);
+
+
     register_post_type('sg_testimonial', [
         'labels' => [
             'name' => __('Testimonials', 'sage'),
@@ -212,4 +238,69 @@ add_action('init', function () {
         'supports' => ['title'],
         'show_in_rest' => false,
     ]);
+});
+
+/**
+ * Helper: find the URL of the page using the sg/blog-archive block.
+ * Falls back to the native CPT archive URL.
+ */
+function sg_get_blog_archive_url(): string {
+    // Check transient cache first (1 hour) to avoid repeated DB queries
+    $cached = get_transient('sg_blog_archive_url');
+    if ($cached) return $cached;
+
+    $pages = get_posts([
+        'post_type'      => 'page',
+        'posts_per_page' => 1,
+        'post_status'    => 'publish',
+        's'              => 'sg/blog-archive',
+    ]);
+
+    if ($pages) {
+        $url = get_permalink($pages[0]->ID);
+    } else {
+        // Fallback: search post content directly
+        global $wpdb;
+        $page_id = $wpdb->get_var(
+            "SELECT ID FROM {$wpdb->posts}
+             WHERE post_status = 'publish'
+             AND post_type = 'page'
+             AND post_content LIKE '%sg/blog-archive%'
+             LIMIT 1"
+        );
+        $url = $page_id ? get_permalink($page_id) : get_post_type_archive_link('sg_blog');
+    }
+
+    set_transient('sg_blog_archive_url', $url, HOUR_IN_SECONDS);
+    return $url ?: get_post_type_archive_link('sg_blog');
+}
+
+/**
+ * Redirect the native CPT archive (/blog/) to the custom block page.
+ * This prevents the broken-logo legacy header from appearing.
+ */
+add_action('template_redirect', function () {
+    if (!is_post_type_archive('sg_blog')) return;
+
+    global $wpdb;
+    $page_id = $wpdb->get_var(
+        "SELECT ID FROM {$wpdb->posts}
+         WHERE post_status = 'publish'
+         AND post_type = 'page'
+         AND post_content LIKE '%sg/blog-archive%'
+         LIMIT 1"
+    );
+
+    if ($page_id) {
+        wp_redirect(get_permalink($page_id), 301);
+        exit;
+    }
+});
+
+/**
+ * Clear the blog archive URL cache whenever a page is saved,
+ * so the redirect stays current if the slug or page changes.
+ */
+add_action('save_post_page', function () {
+    delete_transient('sg_blog_archive_url');
 });

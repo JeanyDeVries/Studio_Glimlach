@@ -2,7 +2,8 @@
   $bg = $attributes->backgroundColor ?? '#F2E9DE';
   $fg = $attributes->textColor       ?? '#000000';
 @endphp
-<section id="portfolio" class="section shell {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }}; padding-top: 0;">
+<section id="portfolio" class="section {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }}; padding-top: 0;">
+  <div class="shell">
   <div class="section-head reveal">
     <div class="section-num">N°03</div>
     <h2 class="section-title h-1">{!! $attributes->heading ?? 'Recent <span class="italic" style="font-weight: 300;">werk</span>' !!}</h2>
@@ -30,6 +31,8 @@
   <div class="portfolio-foot">
     <a href="{{ $attributes->buttonUrl ?? '#' }}" class="btn-ghost btn">{{ $attributes->buttonText ?? 'Bekijk het hele portfolio' }}</a>
   </div>
+  </div>
 </section>
+
 
 <div class="divider-script reveal">— een glimlach zegt alles —</div>

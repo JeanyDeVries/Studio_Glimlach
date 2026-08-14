@@ -52,12 +52,17 @@
     <div class="blog-archive reveal" id="blog-grid">
       @forelse($allPosts as $post)
         @php
-          $postUrl  = !empty($post['url']) ? $post['url'] : '#';
-          $hasImage = !empty($post['imageId']);
-          $tone     = $post['tone'] ?? 'clay';
-          $catKey   = $post['categoryKey'] ?? '';
-          $tag      = $post['tag'] ?? '';
-          $date     = $post['date'] ?? '';
+          $postUrl   = !empty($post['url']) ? $post['url'] : '#';
+          $tone      = $post['tone'] ?? 'clay';
+          $catKey    = $post['categoryKey'] ?? '';
+          $tag       = $post['tag'] ?? '';
+          $date      = $post['date'] ?? '';
+          // Resolve image: prefer attachment ID lookup, fall back to stored URL
+          $imgTag    = !empty($post['imageId'])
+                        ? wp_get_attachment_image($post['imageId'], 'large', false, ['style' => 'width:100%; height:100%; object-fit:cover;'])
+                        : '';
+          $imgUrl    = !empty($post['imageUrl']) ? $post['imageUrl'] : '';
+          $hasImage  = !empty($imgTag) || !empty($imgUrl);
         @endphp
         <article
           class="blog-card"
@@ -67,9 +72,11 @@
         >
           <div class="blog-card-media">
             @if($hasImage)
-              {!! wp_get_attachment_image($post['imageId'], 'large', false, [
-                'style' => 'width:100%; height:100%; object-fit:cover;',
-              ]) !!}
+              @if(!empty($imgTag))
+                {!! $imgTag !!}
+              @else
+                <img src="{{ $imgUrl }}" alt="{{ esc_attr($post['title'] ?? '') }}" style="width:100%; height:100%; object-fit:cover;" />
+              @endif
             @else
               <div class="ph" style="background:var(--{{ $tone }}); width:100%; height:100%;">
                 <div class="ph-label">{{ strtolower($post['title'] ?? '') }}</div>

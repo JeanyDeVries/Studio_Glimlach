@@ -96,17 +96,6 @@
     </div>
   @endif
 
-  {{-- ── Bottom CTA ── --}}
-  <div class="shell">
-    <div class="pf-full-cta reveal">
-      <p class="pf-full-cta-text">{{ $ctaText }}</p>
-      <button
-        class="btn"
-        onclick="document.dispatchEvent(new CustomEvent('openBookingModal'))"
-      >Plan afspraak</button>
-    </div>
-  </div>
-
 </section>
 
 {{-- Filter JS — only injected when multiple categories exist --}}

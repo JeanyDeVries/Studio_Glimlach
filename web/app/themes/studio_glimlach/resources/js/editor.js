@@ -1,8 +1,8 @@
 import domReady from '@wordpress/dom-ready';
 import { registerBlockType } from '@wordpress/blocks';
 import { createElement, useState } from '@wordpress/element';
-import { MediaUpload, MediaUploadCheck, useBlockProps, RichText, InspectorControls, PanelColorSettings } from '@wordpress/block-editor';
-import { TextControl, TextareaControl, SelectControl, Button } from '@wordpress/components';
+import { MediaUpload, MediaUploadCheck, useBlockProps, RichText, InspectorControls } from '@wordpress/block-editor';
+import { PanelBody, TextControl, TextareaControl, SelectControl, Button } from '@wordpress/components';
 
 const el = createElement;
 
@@ -78,24 +78,193 @@ const BlockEditorForm = ({ title, children }) => {
 };
 
 
-const ColorPanel = ({ backgroundColor, textColor, onChangeBackground, onChangeText }) =>
-  el(InspectorControls, null,
-    el(PanelColorSettings, {
-      title: 'Kleuren',
-      colorSettings: [
-        {
-          value: backgroundColor,
-          onChange: onChangeBackground,
-          label: 'Achtergrondkleur',
-        },
-        {
-          value: textColor,
-          onChange: onChangeText,
-          label: 'Tekstkleur',
-        },
-      ],
-    })
+// ── Studio Glimlach site palette ────────────────────────────────────────────
+const SG_PALETTE = [
+  { label: 'Zand',       value: '#F2E9DE' },
+  { label: 'Klei',       value: '#E1C5B0' },
+  { label: 'Salie',      value: '#CDD4B2' },
+  { label: 'Terracotta', value: '#D6927B' },
+  { label: 'Inkt',       value: '#000000' },
+  { label: 'Inkt zacht', value: '#2a2622' },
+  { label: 'Wit',        value: '#ffffff' },
+];
+
+const LS_KEY = 'sg_custom_palette';
+
+const loadCustomColors = () => {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+  catch { return []; }
+};
+
+const isValidColor = (v) =>
+  /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v.trim()) ||
+  /^rgba?\(\s*\d/.test(v.trim());
+
+// ── Single swatch (shared between fixed + custom rows) ───────────────────────
+const Swatch = ({ colorVal, label, selected, onSelect, onDelete }) =>
+  el('div', {
+    key: colorVal,
+    style: { position: 'relative', width: '28px', height: '28px', flexShrink: 0 }
+  },
+    el('button', {
+      title: label || colorVal,
+      onClick: onSelect,
+      style: {
+        width: '28px', height: '28px', borderRadius: '50%',
+        background: colorVal,
+        border: selected ? '3px solid #1e1e1e' : '2px solid rgba(0,0,0,0.15)',
+        cursor: 'pointer', padding: 0, display: 'block',
+        boxShadow: selected ? '0 0 0 2px #fff inset' : 'none',
+      }
+    }),
+    // Delete button — only rendered for custom colours
+    onDelete && el('button', {
+      title: 'Verwijder',
+      onClick: (e) => { e.stopPropagation(); onDelete(); },
+      style: {
+        position: 'absolute', top: '-5px', right: '-5px',
+        width: '14px', height: '14px', borderRadius: '50%',
+        background: '#c0392b', color: '#fff', border: 'none',
+        fontSize: '9px', lineHeight: '14px', textAlign: 'center',
+        cursor: 'pointer', padding: 0, display: 'flex',
+        alignItems: 'center', justifyContent: 'center', fontWeight: 'bold',
+      }
+    }, '×')
   );
+
+// ── Single colour picker row ─────────────────────────────────────────────────
+const SgColorPicker = ({ label, value, onChange, customColors, onAddColor, onRemoveColor }) => {
+  const [inputVal, setInputVal] = useState('');
+
+  const handleAdd = () => {
+    const trimmed = inputVal.trim();
+    if (!isValidColor(trimmed)) return;
+    // Avoid exact duplicates in fixed or custom list
+    const allValues = [...SG_PALETTE.map(s => s.value), ...customColors.map(s => s.value)];
+    if (!allValues.includes(trimmed)) {
+      onAddColor({ label: trimmed, value: trimmed });
+    }
+    onChange(trimmed);
+    setInputVal('');
+  };
+
+  const handleInputChange = (v) => {
+    setInputVal(v);
+    // Live-apply when it looks like a valid color while typing
+    if (isValidColor(v)) onChange(v.trim());
+  };
+
+  return el('div', { style: { marginBottom: '24px' } },
+    el('p', { style: {
+      margin: '0 0 8px', fontSize: '11px', fontWeight: '700',
+      textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555'
+    } }, label),
+
+    // ── Fixed site palette ──
+    el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' } },
+      SG_PALETTE.map(({ label: l, value: v }) =>
+        el(Swatch, {
+          key: v, colorVal: v, label: l,
+          selected: value === v,
+          onSelect: () => { onChange(v); setInputVal(''); },
+          onDelete: null,
+        })
+      )
+    ),
+
+    // ── Custom colours (deletable) ──
+    customColors.length > 0 && el('div', null,
+      el('p', { style: {
+        margin: '10px 0 6px', fontSize: '10px', letterSpacing: '0.1em',
+        textTransform: 'uppercase', color: '#999'
+      }}, 'Eigen kleuren'),
+      el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' } },
+        customColors.map(({ label: l, value: v }) =>
+          el(Swatch, {
+            key: v, colorVal: v, label: l,
+            selected: value === v,
+            onSelect: () => { onChange(v); setInputVal(''); },
+            onDelete: () => onRemoveColor(v),
+          })
+        )
+      )
+    ),
+
+    // ── Free input + Add button ──
+    el('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' } },
+      el('div', { style: {
+        width: '28px', height: '28px', borderRadius: '4px', flexShrink: 0,
+        background: isValidColor(inputVal) ? inputVal.trim() : (value || '#fff'),
+        border: '1px solid rgba(0,0,0,0.2)',
+      }}),
+      el('input', {
+        type: 'text',
+        value: inputVal,
+        placeholder: '#F2E9DE  of  rgba(0,0,0,0.5)',
+        onChange: (e) => handleInputChange(e.target.value),
+        onKeyDown: (e) => { if (e.key === 'Enter') handleAdd(); },
+        style: {
+          flex: 1, padding: '6px 10px', border: '1px solid #ddd',
+          borderRadius: '4px', fontFamily: 'monospace', fontSize: '12px',
+          color: '#1e1e1e', background: '#fafafa',
+        }
+      }),
+      el('button', {
+        onClick: handleAdd,
+        title: 'Voeg toe aan palet',
+        disabled: !isValidColor(inputVal),
+        style: {
+          padding: '6px 10px', background: isValidColor(inputVal) ? '#1e1e1e' : '#ddd',
+          color: '#fff', border: 'none', borderRadius: '4px',
+          fontSize: '16px', lineHeight: 1, cursor: isValidColor(inputVal) ? 'pointer' : 'default',
+          transition: 'background 0.2s', flexShrink: 0,
+        }
+      }, '+')
+    )
+  );
+};
+
+// ── Sidebar panel — manages shared custom palette ────────────────────────────
+const ColorPanel = ({ backgroundColor, textColor, onChangeBackground, onChangeText }) => {
+  const [customColors, setCustomColors] = useState(() => loadCustomColors());
+
+  const addCustomColor = (swatch) => {
+    setCustomColors(prev => {
+      const next = [...prev, swatch];
+      try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const removeCustomColor = (colorVal) => {
+    setCustomColors(prev => {
+      const next = prev.filter(s => s.value !== colorVal);
+      try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  return el(InspectorControls, null,
+    el(PanelBody, { title: 'Kleuren', initialOpen: true },
+      el(SgColorPicker, {
+        label: 'Achtergrondkleur',
+        value: backgroundColor,
+        onChange: onChangeBackground,
+        customColors,
+        onAddColor: addCustomColor,
+        onRemoveColor: removeCustomColor,
+      }),
+      el(SgColorPicker, {
+        label: 'Tekstkleur',
+        value: textColor,
+        onChange: onChangeText,
+        customColors,
+        onAddColor: addCustomColor,
+        onRemoveColor: removeCustomColor,
+      })
+    )
+  );
+};
 
 domReady(() => {
   // 0. Navigation
@@ -607,26 +776,62 @@ domReady(() => {
 
   // 5. Blog Preview
   registerBlockType('sg/blog-preview', {
-    title: 'Blog Preview', icon: 'welcome-widgets-menus', category: 'theme',
+    title: 'Blog Sneak Peek', icon: 'welcome-widgets-menus', category: 'theme',
+    description: 'Toon een selectie van blogartikelen op elke pagina — ideaal voor de homepage.',
     attributes: {
       backgroundColor: { type: 'string', default: '#F2E9DE' },
-      textColor: { type: 'string', default: '#000000' },
-      heading: { type: 'string', default: 'Uit ons <span class="script" style="color: var(--terracotta); font-size: 0.9em;">dagboek</span>' },
-      numberOfPosts: { type: 'number', default: 3 }
+      textColor:       { type: 'string', default: '#000000' },
+      sectionNum:      { type: 'string', default: '' },
+      eyebrow:         { type: 'string', default: 'Verse verhalen' },
+      heading:         { type: 'string', default: 'Uit ons <span class="script" style="color: var(--terracotta); font-size: 0.9em;">dagboek</span>' },
+      blogUrl:         { type: 'string', default: '/blog' },
+      blogLinkLabel:   { type: 'string', default: 'Naar het blog' },
+      // Source: 'cpt' = sg_blog posts, 'folder' = sg_blog_folder tagged pages
+      source:          { type: 'string', default: 'folder' },
+      folderSlug:      { type: 'string', default: '' },
+      numberOfPosts:   { type: 'number', default: 3 },
     },
     edit: ({ attributes, setAttributes }) => {
       return el('div', null,
         el(ColorPanel, {
           backgroundColor: attributes.backgroundColor,
-          textColor: attributes.textColor,
+          textColor:       attributes.textColor,
           onChangeBackground: v => setAttributes({ backgroundColor: v }),
-          onChangeText: v => setAttributes({ textColor: v }),
+          onChangeText:       v => setAttributes({ textColor: v }),
         }),
-        el(BlockEditorForm, { title: 'Blog Preview' },
-        el(WysiwygField, { label: 'Heading', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
-        el(FormField, null, el(TextControl, { type: 'number', label: 'Number of posts to show', value: attributes.numberOfPosts, onChange: v => setAttributes({ numberOfPosts: parseInt(v) }) }))
-      )
-    );
+        el(BlockEditorForm, { title: 'Blog Sneak Peek' },
+
+          el(FormField, null,
+            el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '12px' } }, 'Sectie-header'),
+            el('div', { style: { display: 'grid', gridTemplateColumns: '80px 1fr', gap: '12px', alignItems: 'end' } },
+              el(TextControl, { label: 'N° label', value: attributes.sectionNum, onChange: v => setAttributes({ sectionNum: v }), placeholder: 'N°04' }),
+              el(TextControl, { label: 'Eyebrow', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) }),
+            ),
+            el(WysiwygField, { label: 'Titel', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } },
+              el(TextControl, { label: 'Blog link URL', value: attributes.blogUrl, onChange: v => setAttributes({ blogUrl: v }), placeholder: '/blog' }),
+              el(TextControl, { label: 'Blog link label', value: attributes.blogLinkLabel, onChange: v => setAttributes({ blogLinkLabel: v }) }),
+            )
+          ),
+
+          el(FormField, null,
+            el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '4px' } }, 'Bron van artikelen'),
+            el(TextControl, {
+              label: 'Blog Map slug (sg_blog_folder)',
+              value: attributes.folderSlug,
+              onChange: v => setAttributes({ folderSlug: v }),
+              help: 'Vul de slug in van een Blog Map (bijv. "blogposts"). Leeglaten = meest recente sg_blog posts.',
+              placeholder: 'blogposts',
+            }),
+            el(TextControl, {
+              type: 'number',
+              label: 'Aantal kaarten',
+              value: attributes.numberOfPosts,
+              onChange: v => setAttributes({ numberOfPosts: Math.max(1, parseInt(v) || 3) }),
+            })
+          )
+        )
+      );
     },
     save: () => null
   });
@@ -723,6 +928,49 @@ domReady(() => {
         )
       )
     );
+    },
+    save: () => null
+  });
+
+  // 7b. Catching Finisher
+  registerBlockType('sg/catching-finisher', {
+    title: 'Catching Finisher', icon: 'flag', category: 'theme',
+    description: 'Een warme afsluiter met scripttitel "Laat ons jullie verhaal vastleggen" en een Plan-afspraak knop.',
+    attributes: {
+      backgroundColor: { type: 'string', default: '#F2E9DE' },
+      textColor:       { type: 'string', default: '#000000' },
+      eyebrow:         { type: 'string', default: 'Jouw shoot' },
+      subtext:         { type: 'string', default: 'Plan een shoot en wij zorgen voor de rest. Van voorbereiding tot eindresultaat — helemaal op maat.' },
+      buttonText:      { type: 'string', default: 'Plan je shoot' },
+    },
+    edit: ({ attributes, setAttributes }) => {
+      return el('div', null,
+        el(ColorPanel, {
+          backgroundColor: attributes.backgroundColor,
+          textColor:       attributes.textColor,
+          onChangeBackground: v => setAttributes({ backgroundColor: v }),
+          onChangeText:       v => setAttributes({ textColor: v }),
+        }),
+        el(BlockEditorForm, { title: 'Catching Finisher' },
+          el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } },
+            'Een afsluiter met de vaste titel "Laat ons jullie verhaal vastleggen" in scriptstijl, plus een Plan afspraak knop.'
+          ),
+          el(FormField, null,
+            el(TextControl, { label: 'Eyebrow', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) })
+          ),
+          el(FormField, null,
+            el(TextareaControl, {
+              label: 'Subtekst',
+              value: attributes.subtext,
+              onChange: v => setAttributes({ subtext: v }),
+              rows: 3,
+            })
+          ),
+          el(FormField, null,
+            el(TextControl, { label: 'Knoptekst (opent boekingsmodal)', value: attributes.buttonText, onChange: v => setAttributes({ buttonText: v }) })
+          )
+        )
+      );
     },
     save: () => null
   });
@@ -1363,6 +1611,244 @@ domReady(() => {
               el(TextControl, { label: 'KvK / Legal', value: attributes.kvk,         onChange: v => setAttributes({ kvk:         v }) }),
               el(TextControl, { label: 'Tagline',      value: attributes.copyTagline, onChange: v => setAttributes({ copyTagline: v }) }),
             )
+          )
+        )
+      );
+    },
+    save: () => null
+  });
+
+
+  // ── Blog Post (Single article page) ──────────────────────────────────────
+  registerBlockType('sg/blog-post', {
+    title: 'Blog Post — Artikel', icon: 'media-document', category: 'theme',
+    description: 'Volledig configureerbaar blog artikel: hero, feature image, gemixte broodtekst/quotes, gallerij en "Verder lezen".',
+    attributes: {
+      backgroundColor:   { type: 'string', default: '#F2E9DE' },
+      textColor:         { type: 'string', default: '#000000' },
+      backUrl:           { type: 'string', default: '/blog' },
+      backLabel:         { type: 'string', default: '← Terug naar blog' },
+      category:          { type: 'string', default: 'Verhalen' },
+      date:              { type: 'string', default: '' },
+      title:             { type: 'string', default: 'De titel van dit verhaal' },
+      excerpt:           { type: 'string', default: 'Een korte inleiding die de lezer uitnodigt verder te lezen.' },
+      featureImageId:    { type: 'number' },
+      featureImageUrl:   { type: 'string' },
+      // Mixed content: each item = { type: 'paragraph'|'quote'|'image', text?, imageId?, imageUrl?, caption? }
+      contentBlocks: {
+        type: 'array',
+        default: [
+          { type: 'paragraph', text: "Schrijf hier de eerste alinea van je verhaal." },
+          { type: 'quote',     text: "Een mooie zin die blijft hangen." },
+          { type: 'paragraph', text: "Vervolg van het verhaal na de quote." },
+        ]
+      },
+      // Gallery (up to 4 photos)
+      galleryImages: { type: 'array', default: [] },
+      // "Verder lezen": slug of the sg_blog_folder taxonomy term
+      relatedFolderSlug: { type: 'string', default: '' },
+    },
+    edit: ({ attributes, setAttributes }) => {
+
+      // ── Content block helpers ────────────────────────────────────────────
+      const blocks = attributes.contentBlocks || [];
+
+      const addBlock = (type) => {
+        const defaults = type === 'image'
+          ? { type, imageId: null, imageUrl: '', caption: '' }
+          : { type, text: '' };
+        setAttributes({ contentBlocks: [...blocks, defaults] });
+      };
+
+      const updateBlockImage = (i, media) => {
+        const b = [...blocks];
+        b[i] = { ...b[i], imageId: media.id, imageUrl: media.url };
+        setAttributes({ contentBlocks: b });
+      };
+      const updateBlockCaption = (i, val) => {
+        const b = [...blocks];
+        b[i] = { ...b[i], caption: val };
+        setAttributes({ contentBlocks: b });
+      };
+
+      const updateBlock = (i, val) => {
+        const b = [...blocks];
+        b[i] = { ...b[i], text: val };
+        setAttributes({ contentBlocks: b });
+      };
+
+      const removeBlock = (i) => {
+        const b = [...blocks];
+        b.splice(i, 1);
+        setAttributes({ contentBlocks: b });
+      };
+
+      const moveBlock = (i, dir) => {
+        const b = [...blocks];
+        const t = i + dir;
+        if (t < 0 || t >= b.length) return;
+        [b[i], b[t]] = [b[t], b[i]];
+        setAttributes({ contentBlocks: b });
+      };
+
+      // ── Gallery helpers ──────────────────────────────────────────────────
+      const updateGalleryImg = (i, media) => {
+        const g = [...attributes.galleryImages];
+        g[i] = { id: media.id, url: media.url };
+        setAttributes({ galleryImages: g });
+      };
+      const addGallerySlot = () => {
+        if (attributes.galleryImages.length >= 4) return;
+        setAttributes({ galleryImages: [...attributes.galleryImages, { id: null, url: '' }] });
+      };
+      const removeGalleryImg = (i) => {
+        const g = [...attributes.galleryImages];
+        g.splice(i, 1);
+        setAttributes({ galleryImages: g });
+      };
+
+      // ── Render content block rows ────────────────────────────────────────
+      const blockTypeMeta = {
+        paragraph: { color: '#e8f4ff', label: '¶ Alinea',     badge: '#0073aa', badgeBg: '#d0eafb' },
+        quote:     { color: '#fff8e8', label: '❝ Quote',      badge: '#b87d00', badgeBg: '#fff3cd' },
+        image:     { color: '#f0f8ee', label: '🖼 Afbeelding', badge: '#2d7a44', badgeBg: '#d4edda' },
+      };
+
+      const blockEls = blocks.map((block, i) => {
+        const meta = blockTypeMeta[block.type] || blockTypeMeta.paragraph;
+        const headerRow = el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+          el('span', {
+            style: {
+              fontSize: '10px', fontWeight: '700', letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: meta.badge,
+              background: meta.badgeBg, padding: '2px 8px', borderRadius: '999px',
+            }
+          }, meta.label),
+          el('button', {
+            type: 'button', title: 'Omhoog', disabled: i === 0, onClick: () => moveBlock(i, -1),
+            style: { border: '1px solid #ddd', borderRadius: '3px', background: '#fff', padding: '2px 6px', fontSize: '11px', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#ccc' : '#555' }
+          }, '↑'),
+          el('button', {
+            type: 'button', title: 'Omlaag', disabled: i === blocks.length - 1, onClick: () => moveBlock(i, 1),
+            style: { border: '1px solid #ddd', borderRadius: '3px', background: '#fff', padding: '2px 6px', fontSize: '11px', cursor: i === blocks.length - 1 ? 'default' : 'pointer', color: i === blocks.length - 1 ? '#ccc' : '#555' }
+          }, '↓'),
+          el('button', {
+            type: 'button', title: 'Verwijder', onClick: () => removeBlock(i),
+            style: { marginLeft: 'auto', border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: '14px', lineHeight: 1 }
+          }, '✕')
+        );
+
+        let inputEl;
+        if (block.type === 'image') {
+          inputEl = el('div', null,
+            el(ImageSelect, {
+              label: 'Kies afbeelding',
+              value: { id: block.imageId, url: block.imageUrl },
+              onChange: m => updateBlockImage(i, m),
+            }),
+            el(TextControl, {
+              label: 'Bijschrift (optioneel)',
+              value: block.caption || '',
+              onChange: v => updateBlockCaption(i, v),
+              placeholder: 'Een korte beschrijving of context...'
+            })
+          );
+        } else {
+          inputEl = el(TextareaControl, {
+            value: block.text || '',
+            onChange: v => updateBlock(i, v),
+            rows: block.type === 'quote' ? 2 : 3,
+            placeholder: block.type === 'quote' ? 'Typ een mooie zin die opvalt...' : 'Typ hier de alineatekst...',
+            style: { margin: 0 }
+          });
+        }
+
+        return el('div', {
+          key: i,
+          style: { background: meta.color, border: '1px solid #dde', borderRadius: '4px', padding: '10px 12px', marginBottom: '8px' }
+        }, headerRow, inputEl);
+      });
+
+      const gallerySlots = attributes.galleryImages.map((img, i) =>
+        el('div', { key: i, style: { position: 'relative' } },
+          el(ImageSelect, { label: `Foto ${i + 1}`, value: img, onChange: m => updateGalleryImg(i, m) }),
+          el(Button, {
+            isDestructive: true, variant: 'link',
+            style: { fontSize: '11px', marginTop: '-4px', paddingLeft: 0 },
+            onClick: () => removeGalleryImg(i)
+          }, '✕ Verwijder')
+        )
+      );
+
+      return el('div', null,
+        el(ColorPanel, {
+          backgroundColor: attributes.backgroundColor,
+          textColor:       attributes.textColor,
+          onChangeBackground: v => setAttributes({ backgroundColor: v }),
+          onChangeText:       v => setAttributes({ textColor: v }),
+        }),
+        el(BlockEditorForm, { title: 'Blog Post — Artikel' },
+
+          // ── Meta
+          el(FormField, null,
+            el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '12px' } }, 'Navigatie & meta'),
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } },
+              el(TextControl, { label: 'Terug-URL', value: attributes.backUrl, onChange: v => setAttributes({ backUrl: v }) }),
+              el(TextControl, { label: 'Terug-label', value: attributes.backLabel, onChange: v => setAttributes({ backLabel: v }) }),
+              el(TextControl, { label: 'Categorie', value: attributes.category, onChange: v => setAttributes({ category: v }) }),
+              el(TextControl, { label: 'Datum', value: attributes.date, onChange: v => setAttributes({ date: v }) }),
+            )
+          ),
+
+          // ── Hero text
+          el(WysiwygField, { label: 'Titel', value: attributes.title, onChange: v => setAttributes({ title: v }) }),
+          el(WysiwygField, { label: 'Inleiding / Excerpt', value: attributes.excerpt, onChange: v => setAttributes({ excerpt: v }) }),
+
+          // ── Feature image
+          el(FormField, null,
+            el(ImageSelect, {
+              label: 'Feature afbeelding (hero)',
+              value: { id: attributes.featureImageId, url: attributes.featureImageUrl },
+              onChange: m => setAttributes({ featureImageId: m.id, featureImageUrl: m.url }),
+            })
+          ),
+
+          // ── Mixed content blocks
+          el(FormField, null,
+            el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '4px' } }, 'Artikel inhoud'),
+            el('p', { style: { fontSize: '11px', color: '#999', marginBottom: '12px' } }, 'Mix alinea\'s, quotes en afbeeldingen in elke gewenste volgorde.'),
+            ...blockEls,
+            el('div', { style: { display: 'flex', gap: '6px', marginTop: '12px' } },
+              el(Button, { isSecondary: true, onClick: () => addBlock('paragraph'), style: { flex: 1 } }, '+ Alinea'),
+              el(Button, { isSecondary: true, onClick: () => addBlock('quote'),     style: { flex: 1, borderColor: '#b87d00', color: '#b87d00' } }, '❝ Quote'),
+              el(Button, { isSecondary: true, onClick: () => addBlock('image'),     style: { flex: 1, borderColor: '#2d7a44', color: '#2d7a44' } }, '🖼 Foto')
+            )
+          ),
+
+          // ── Gallery
+          el(FormField, null,
+            el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '4px' } }, "Foto gallerij (max. 4)"),
+            el('p', { style: { fontSize: '11px', color: '#999', marginBottom: '12px' } }, 'Verschijnt na de inhoud. Eerste foto breed (16:9), rest portret (4:5).'),
+            attributes.galleryImages.length > 0
+              ? el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' } }, ...gallerySlots)
+              : el('p', { style: { color: '#999', fontSize: '12px', margin: '0 0 12px' } }, "Nog geen foto's."),
+            attributes.galleryImages.length < 4 &&
+              el(Button, { isSecondary: true, onClick: addGallerySlot }, '+ Foto toevoegen')
+          ),
+
+          // ── Verder lezen
+          el(FormField, null,
+            el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '4px' } }, 'Verder lezen'),
+            el('p', { style: { fontSize: '11px', color: '#999', marginBottom: '12px', lineHeight: '1.5' } },
+              '📁 Maak in WordPress Pages > Tags een "Blog Map" aan (bijv. slug: blogposts). Tag elke blogpagina ermee. Vul hieronder die slug in.'
+            ),
+            el(TextControl, {
+              label: 'Blog Map slug',
+              value: attributes.relatedFolderSlug,
+              onChange: v => setAttributes({ relatedFolderSlug: v }),
+              help: 'Bijv. "blogposts". Pagina\'s met deze tag verschijnen als "Verder lezen" suggesties.',
+              placeholder: 'blogposts'
+            })
           )
         )
       );

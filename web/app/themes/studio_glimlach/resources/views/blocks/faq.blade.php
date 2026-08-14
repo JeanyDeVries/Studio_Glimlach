@@ -6,7 +6,8 @@
     ['q' => 'Wat moeten we aantrekken?', 'a' => 'Zachte, effen kleuren in aardetinten werken het mooist.']
   ];
 @endphp
-<section class="section shell {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+<section class="section {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+  <div class="shell">
   <div class="section-head reveal" style="justify-items: center;">
     <div class="section-num">N°06</div>
     <h2 class="section-title h-1" style="text-align: center;">{!! $attributes->heading ?? 'Veelgestelde <span class="italic">vragen</span>' !!}</h2>
@@ -23,4 +24,6 @@
       </div>
     @endforeach
   </div>
+  </div>
 </section>
+

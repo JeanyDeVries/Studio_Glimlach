@@ -4,7 +4,8 @@
   $images = $attributes->images ?? [];
   $tones = ['clay', 'sage', 'warm', 'cream', 'muted', 'deep'];
 @endphp
-<section class="section shell {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+<section class="section {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+  <div class="shell">
   <div class="insta-head reveal">
     <div class="eyebrow">{{ $attributes->eyebrow ?? 'Volg ons dagelijks' }}</div>
     <a href="{{ $attributes->handleUrl ?? '#' }}" target="_blank" class="insta-handle">{{ $attributes->handleText ?? '@studio.glimlach' }}</a>
@@ -22,4 +23,6 @@
       </div>
     @endfor
   </div>
+  </div>
 </section>
+

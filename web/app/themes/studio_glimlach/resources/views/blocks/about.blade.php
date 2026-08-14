@@ -2,7 +2,8 @@
   $bg = $attributes->backgroundColor ?? '#F2E9DE';
   $fg = $attributes->textColor       ?? '#000000';
 @endphp
-<section id="over" class="section shell {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+<section id="over" class="section {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+  <div class="shell">
   <div class="section-head reveal">
     <div class="section-num">N°02</div>
     <h2 class="section-title h-1">{!! $attributes->heading ?? 'Merel <span class="script" style="color: var(--terracotta); font-size: 0.8em;">&amp;</span> Jaimy' !!}</h2>
@@ -35,4 +36,6 @@
       </div>
     </div>
   </div>
+  </div>
 </section>
+

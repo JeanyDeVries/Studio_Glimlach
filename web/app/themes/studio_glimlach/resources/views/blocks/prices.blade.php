@@ -8,7 +8,8 @@
     ['name' => 'Mini shoot', 'sub' => 'Snel & intiem', 'price' => '€ 149', 'includes' => 'Studio · 30 min · 6 bewerkte foto\'s', 'url' => '/mini-shoot'],
   ];
 @endphp
-<section id="tarieven" class="section shell prices-section {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+<section id="tarieven" class="section prices-section {{ $attributes->className ?? '' }}" style="background-color: {{ $bg }}; color: {{ $fg }};">
+  <div class="shell">
   <div class="section-head reveal">
     <div class="section-num">{{ $attributes->sectionNum ?? 'N°04' }}</div>
     <h2 class="section-title h-1">{!! $attributes->heading ?? 'Onze <span class="italic">tarieven</span>' !!}</h2>
@@ -42,4 +43,6 @@
   @else
     <p class="prices-note reveal">Alle prijzen zijn inclusief online galerij en twee weken recht op downloaden. Reiskosten buiten een straal van 15 km worden apart besproken.</p>
   @endif
+  </div>
 </section>
+
