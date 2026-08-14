@@ -2,7 +2,7 @@ import domReady from '@wordpress/dom-ready';
 import { registerBlockType } from '@wordpress/blocks';
 import { createElement, useState } from '@wordpress/element';
 import { MediaUpload, MediaUploadCheck, useBlockProps, RichText, InspectorControls } from '@wordpress/block-editor';
-import { PanelBody, TextControl, TextareaControl, SelectControl, Button } from '@wordpress/components';
+import { PanelBody, TextControl, TextareaControl, SelectControl, Button, ToggleControl } from '@wordpress/components';
 
 const el = createElement;
 
@@ -575,30 +575,39 @@ domReady(() => {
       eyebrow:          { type: 'string', default: 'Alle shoots · 2024–2026' },
       sectionNum:       { type: 'string', default: 'N°03' },
       ctaText:          { type: 'string', default: 'Wil je ook zulke herinneringen vastleggen?' },
-      // Each shoot = { name: string, images: [{id, url}] }
+      // Each shoot = { name, images:[{id, url, showOnAll}] }
       shoots:           { type: 'array',  default: [] },
+      allPageMax:       { type: 'number', default: 4 },
     },
     edit: ({ attributes, setAttributes }) => {
       const shoots = attributes.shoots || [];
+      const [dragOver, setDragOver] = useState(null); // index being dragged over
 
-      // ── Shoot helpers ───────────────────────────────────────────────────────────────
+      // ── Shoot helpers ────────────────────────────────────────────────────────
       const addShoot = () =>
         setAttributes({ shoots: [...shoots, { name: 'Nieuwe categorie', images: [] }] });
 
       const removeShoot = (si) => {
-        const next = [...shoots];
-        next.splice(si, 1);
+        const next = [...shoots]; next.splice(si, 1);
         setAttributes({ shoots: next });
       };
 
-      const updateShootName = (si, val) => {
-        const next = shoots.map((s, i) => i === si ? { ...s, name: val } : s);
+      const updateShoot = (si, patch) => {
+        const next = shoots.map((s, i) => i === si ? { ...s, ...patch } : s);
+        setAttributes({ shoots: next });
+      };
+
+      const moveShoot = (si, dir) => {
+        const next = [...shoots];
+        const target = si + dir;
+        if (target < 0 || target >= next.length) return;
+        [next[si], next[target]] = [next[target], next[si]];
         setAttributes({ shoots: next });
       };
 
       const addImageToShoot = (si) => {
         const next = shoots.map((s, i) =>
-          i === si ? { ...s, images: [...(s.images || []), { id: null, url: '' }] } : s
+          i === si ? { ...s, images: [...(s.images || []), { id: null, url: '', showOnAll: true }] } : s
         );
         setAttributes({ shoots: next });
       };
@@ -607,7 +616,18 @@ domReady(() => {
         const next = shoots.map((s, i) => {
           if (i !== si) return s;
           const imgs = [...(s.images || [])];
-          imgs[ii] = { id: media.id, url: media.url };
+          // Preserve existing fields (like showOnAll) when swapping the image
+          imgs[ii] = { ...imgs[ii], id: media.id, url: media.url };
+          return { ...s, images: imgs };
+        });
+        setAttributes({ shoots: next });
+      };
+
+      const updateImageField = (si, ii, patch) => {
+        const next = shoots.map((s, i) => {
+          if (i !== si) return s;
+          const imgs = [...(s.images || [])];
+          imgs[ii] = { ...imgs[ii], ...patch };
           return { ...s, images: imgs };
         });
         setAttributes({ shoots: next });
@@ -616,77 +636,132 @@ domReady(() => {
       const removeShootImage = (si, ii) => {
         const next = shoots.map((s, i) => {
           if (i !== si) return s;
-          const imgs = [...(s.images || [])];
-          imgs.splice(ii, 1);
+          const imgs = [...(s.images || [])]; imgs.splice(ii, 1);
           return { ...s, images: imgs };
         });
         setAttributes({ shoots: next });
       };
 
-      // ── Shoot UI ────────────────────────────────────────────────────────────────
-      const shootSectionStyle = {
-        border: '1px solid #ddd',
-        borderRadius: '6px',
-        marginBottom: '16px',
-        overflow: 'hidden',
-      };
-      const shootHeaderStyle = {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '12px 14px',
-        background: '#f0f0f0',
-        borderBottom: '1px solid #ddd',
+      // ── Drag helpers ─────────────────────────────────────────────────────────
+      let dragSrc = null;
+      const onDragStart = (si) => { dragSrc = si; };
+      const onDragEnter = (si) => setDragOver(si);
+      const onDragEnd   = ()   => { dragSrc = null; setDragOver(null); };
+      const onDrop      = (si) => {
+        if (dragSrc === null || dragSrc === si) return;
+        const next = [...shoots];
+        const [moved] = next.splice(dragSrc, 1);
+        next.splice(si, 0, moved);
+        setAttributes({ shoots: next });
+        dragSrc = null; setDragOver(null);
       };
 
+      // ── Shoot UI ─────────────────────────────────────────────────────────────
       const shootEls = shoots.map((shoot, si) => {
-        const imgEls = (shoot.images || []).map((img, ii) =>
-          el('div', { key: ii, style: { position: 'relative' } },
+        const isDragTarget = dragOver === si;
+        const imgEls = (shoot.images || []).map((img, ii) => {
+          const onAll = img.showOnAll !== false;
+          return el('div', { key: ii, style: { position: 'relative' } },
             el(ImageSelect, {
               label: `Foto ${ii + 1}`,
               value: img,
               onChange: m => updateShootImage(si, ii, m),
             }),
+            // ── Show-on-All star toggle ──
+            el('button', {
+              type: 'button',
+              title: onAll ? 'Zichtbaar op "Alles" — klik om te verbergen' : 'Verborgen op "Alles" — klik om te tonen',
+              onClick: () => updateImageField(si, ii, { showOnAll: !onAll }),
+              style: {
+                display: 'flex', alignItems: 'center', gap: '5px',
+                marginTop: '4px', padding: '4px 8px',
+                background: onAll ? '#fff8e1' : '#f5f5f5',
+                border: `1px solid ${onAll ? '#f0c000' : '#ddd'}`,
+                borderRadius: '4px', cursor: 'pointer', width: '100%',
+                fontSize: '11px', color: onAll ? '#7a5900' : '#999',
+                fontWeight: onAll ? '600' : '400',
+              }
+            },
+              el('span', { style: { fontSize: '14px' } }, onAll ? '★' : '☆'),
+              onAll ? 'Zichtbaar op Alles' : 'Alleen in categorie'
+            ),
             el(Button, {
-              isDestructive: true,
-              variant: 'link',
-              style: { fontSize: '11px', marginTop: '-4px', paddingLeft: 0 },
+              isDestructive: true, variant: 'link',
+              style: { fontSize: '11px', marginTop: '2px', paddingLeft: 0 },
               onClick: () => removeShootImage(si, ii),
             }, '✕ Verwijder foto')
-          )
-        );
+          );
+        });
 
-        return el('div', { key: si, style: shootSectionStyle },
-          el('div', { style: shootHeaderStyle },
+        return el('div', {
+          key: si,
+          draggable: true,
+          onDragStart: () => onDragStart(si),
+          onDragEnter: (e) => { e.preventDefault(); onDragEnter(si); },
+          onDragOver:  (e) => e.preventDefault(),
+          onDrop:      (e) => { e.preventDefault(); onDrop(si); },
+          onDragEnd:   onDragEnd,
+          style: {
+            border: isDragTarget ? '2px dashed #1e1e1e' : '1px solid #ddd',
+            borderRadius: '6px', marginBottom: '12px', overflow: 'hidden',
+            opacity: dragOver !== null && dragOver !== si && dragSrc === si ? 0.4 : 1,
+            transition: 'border 0.15s, opacity 0.15s',
+          }
+        },
+          // ── Header row ──
+          el('div', { style: {
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 14px', background: '#f0f0f0', borderBottom: '1px solid #ddd',
+          }},
+            // Drag handle
+            el('span', {
+              title: 'Slepen om te herordenen',
+              style: { cursor: 'grab', color: '#999', fontSize: '18px', lineHeight: 1, userSelect: 'none' }
+            }, '⠿'),
+
+            // Up / Down arrows
+            el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } },
+              el('button', {
+                type: 'button', title: 'Omhoog', disabled: si === 0,
+                onClick: () => moveShoot(si, -1),
+                style: { background: 'none', border: '1px solid #ccc', borderRadius: '3px',
+                  width: '20px', height: '20px', cursor: si === 0 ? 'default' : 'pointer',
+                  color: si === 0 ? '#ccc' : '#555', fontSize: '10px', lineHeight: 1, padding: 0 }
+              }, '↑'),
+              el('button', {
+                type: 'button', title: 'Omlaag', disabled: si === shoots.length - 1,
+                onClick: () => moveShoot(si, 1),
+                style: { background: 'none', border: '1px solid #ccc', borderRadius: '3px',
+                  width: '20px', height: '20px', cursor: si === shoots.length - 1 ? 'default' : 'pointer',
+                  color: si === shoots.length - 1 ? '#ccc' : '#555', fontSize: '10px', lineHeight: 1, padding: 0 }
+              }, '↓')
+            ),
+
+            // Name
             el('div', { style: { flex: 1 } },
               el(TextControl, {
                 label: 'Categorienaam',
                 value: shoot.name,
-                onChange: v => updateShootName(si, v),
+                onChange: v => updateShoot(si, { name: v }),
               })
             ),
+
+            // Delete
             el(Button, {
-              isDestructive: true,
-              variant: 'secondary',
+              isDestructive: true, variant: 'secondary',
               style: { flexShrink: 0, marginTop: '24px' },
               onClick: () => removeShoot(si),
-            }, '✕ Verwijder categorie')
+            }, '✕')
           ),
+
+          // ── Images ──
           el('div', { style: { padding: '14px' } },
             imgEls.length === 0
               ? el('p', { style: { color: '#999', fontSize: '12px', margin: '0 0 12px' } }, 'Nog geen foto\'s. Voeg er een toe.')
               : el('div', {
-                  style: {
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '16px',
-                    marginBottom: '12px',
-                  }
+                  style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }
                 }, ...imgEls),
-            el(Button, {
-              isSecondary: true,
-              onClick: () => addImageToShoot(si),
-            }, '+ Foto toevoegen')
+            el(Button, { isSecondary: true, onClick: () => addImageToShoot(si) }, '+ Foto toevoegen')
           )
         );
       });
@@ -700,12 +775,19 @@ domReady(() => {
         }),
         el(BlockEditorForm, { title: 'Portfolio — Volledig overzicht' },
           el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } },
-            "Voeg categorieën toe en selecteer per categorie de foto's. Alle foto's zijn zichtbaar op de pagina; bezoekers kunnen filteren per categorie."
+            "Sleep categorieën om te herordenen. Klik per foto op de ster (★) om te kiezen welke foto's op de 'Alles'-pagina verschijnen."
           ),
 
           el(FormField, null,
             el(TextControl, { label: 'Sectienummer', value: attributes.sectionNum, onChange: v => setAttributes({ sectionNum: v }) }),
             el(TextControl, { label: 'Eyebrow tekst', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) }),
+            el(TextControl, {
+              label: 'Max. foto\'s per categorie op "Alles" (fallback)',
+              type: 'number', min: '1',
+              value: String(attributes.allPageMax ?? 4),
+              onChange: v => setAttributes({ allPageMax: Math.max(1, parseInt(v) || 4) }),
+              help: 'Wordt alleen gebruikt als er geen foto\'s expliciet als ★ zijn gemarkeerd binnen een categorie.',
+            }),
           ),
           el(WysiwygField, { label: 'Koptekst', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
           el(FormField, null,
@@ -715,12 +797,8 @@ domReady(() => {
           el('div', { style: { marginTop: '8px' } },
             el('div', {
               style: {
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px',
-                paddingBottom: '8px',
-                borderBottom: '1px solid #eee',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee',
               }
             },
               el('div', null,
@@ -733,10 +811,7 @@ domReady(() => {
                     : `${shoots.length} ${shoots.length === 1 ? 'categorie' : 'categorieën'} · ${shoots.reduce((n, s) => n + (s.images || []).length, 0)} foto's`
                 )
               ),
-              el(Button, {
-                isPrimary: true,
-                onClick: addShoot,
-              }, '+ Categorie toevoegen')
+              el(Button, { isPrimary: true, onClick: addShoot }, '+ Categorie toevoegen')
             ),
             ...shootEls
           )

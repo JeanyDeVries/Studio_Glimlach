@@ -4,9 +4,10 @@
   $heading    = $attributes->heading  ?? 'Ons <span class="italic" style="font-weight:300;">portfolio</span>';
   $eyebrow    = $attributes->eyebrow  ?? 'Alle shoots · 2024–2026';
   $ctaText    = $attributes->ctaText  ?? 'Wil je ook zulke herinneringen vastleggen?';
+  $allPageMax = max(1, intval($attributes->allPageMax ?? 4));
   $tones      = ['clay','sage','warm','cream','muted','sand','deep'];
 
-  // Primary data structure: shoots = [{name, images:[{id,url}]}]
+  // Primary data structure: shoots = [{name, images:[{id, url, showOnAll}]}]
   $shoots = $attributes->shoots ?? [];
 
   // Backward-compat: if old flat images attr exists but no shoots, wrap them
@@ -57,6 +58,11 @@
         $shootImages = $shoot['images'] ?? [];
         $shootSlug   = sanitize_title($shoot['name'] ?? '');
         $shootLabel  = $shoot['name'] ?? '';
+
+        // Determine which images are "showOnAll".
+        // If the user has explicitly starred at least one image, use that selection.
+        // Otherwise fall back to the first $allPageMax images.
+        $hasExplicitSelection = collect($shootImages)->contains(fn($img) => isset($img['showOnAll']));
       @endphp
       <div
         class="shell pf-shoot-block reveal"
@@ -68,7 +74,16 @@
 
         <div class="portfolio pf-shoot-grid">
           @foreach($shootImages as $ii => $img)
-            <div class="portfolio-cell">
+            @php
+              if ($hasExplicitSelection) {
+                // Explicit: show on All only if user starred it
+                $showOnAll = (bool)($img['showOnAll'] ?? true);
+              } else {
+                // Fallback: show first $allPageMax images on All
+                $showOnAll = ($ii < $allPageMax);
+              }
+            @endphp
+            <div class="portfolio-cell{{ $showOnAll ? '' : ' pf-overflow' }}">
               @if(!empty($img['id']))
                 {!! wp_get_attachment_image($img['id'], 'large', false, [
                   'style'   => 'width:100%; height:auto; display:block;',
@@ -98,22 +113,37 @@
 
 </section>
 
-{{-- Filter JS — only injected when multiple categories exist --}}
+{{-- Filter + overflow JS — only injected when multiple categories exist --}}
 @if($hasCategories)
 <script>
 (function () {
   var filters = document.querySelectorAll('.pf-filters .pf-filter');
   var blocks  = document.querySelectorAll('.pf-shoot-block');
 
+  function applyFilter(filterVal) {
+    blocks.forEach(function (block) {
+      var slug    = block.getAttribute('data-shoot');
+      var visible = (filterVal === 'all' || slug === filterVal);
+
+      block.style.display = visible ? '' : 'none';
+
+      // On "Alles": hide overflow (non-starred) images.
+      // On a category filter: show ALL images for that shoot.
+      var overflows = block.querySelectorAll('.pf-overflow');
+      overflows.forEach(function (cell) {
+        cell.style.display = (filterVal === 'all') ? 'none' : '';
+      });
+    });
+  }
+
+  // Initial state: hide overflow images on "Alles"
+  applyFilter('all');
+
   filters.forEach(function (btn) {
     btn.addEventListener('click', function () {
       filters.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
-      var filter = btn.getAttribute('data-filter');
-      blocks.forEach(function (block) {
-        block.style.display =
-          (filter === 'all' || block.getAttribute('data-shoot') === filter) ? '' : 'none';
-      });
+      applyFilter(btn.getAttribute('data-filter'));
     });
   });
 })();
