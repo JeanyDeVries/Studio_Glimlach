@@ -8,8 +8,8 @@
     ['id' => 'koppel', 'label' => 'Koppel', 'sub' => 'Met z\'n tweeën']
   ];
 @endphp
-<div id="booking-modal-container" style="display: none;">
-  <div class="modal-overlay" id="booking-modal-overlay">
+<div id="booking-modal-container">
+  <div class="modal-overlay" id="booking-modal-overlay" style="display: none;">
     <div class="modal" id="booking-modal-content" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="document.dispatchEvent(new CustomEvent('closeBookingModal'))">×</button>
       <div id="booking-app" data-shoot-types="{{ esc_attr(json_encode($shootTypes)) }}" data-success-msg="{{ esc_attr($attributes->successMessage ?? 'Je hoort binnen 24 uur van ons met een bevestiging.') }}">

@@ -93,9 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // No appointment block on this page — create the modal DOM ourselves
     modalContainer = document.createElement('div');
     modalContainer.id = 'booking-modal-container';
-    modalContainer.style.display = 'none';
+    // The overlay itself is what we show/hide, the container is always in DOM
     modalContainer.innerHTML = `
-      <div class="modal-overlay" id="booking-modal-overlay">
+      <div class="modal-overlay" id="booking-modal-overlay" style="display:none">
         <div class="modal" id="booking-modal-content" onclick="event.stopPropagation()">
           <button class="modal-close" onclick="document.dispatchEvent(new CustomEvent('closeBookingModal'))">&#x00D7;</button>
           <div id="booking-app"
@@ -109,22 +109,30 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     // Appointment block exists — move it to body root so z-index stacking works
     document.body.appendChild(modalContainer);
+    // Ensure overlay starts hidden
+    const existingOverlay = modalContainer.querySelector('.modal-overlay');
+    if (existingOverlay) existingOverlay.style.display = 'none';
   }
 
   if (modalContainer) {
 
     document.addEventListener('openBookingModal', () => {
-      modalContainer.style.display = 'block';
+      // Show the overlay directly (position:fixed + flex centering)
+      const overlay = document.getElementById('booking-modal-overlay');
+      if (overlay) overlay.style.display = 'flex';
       renderBookingForm(); // re-render to reset state
     });
 
     document.addEventListener('closeBookingModal', () => {
-      modalContainer.style.display = 'none';
+      const overlay = document.getElementById('booking-modal-overlay');
+      if (overlay) overlay.style.display = 'none';
     });
 
     // allow clicking on overlay to close
     const overlay = document.getElementById('booking-modal-overlay');
     if (overlay) {
+      // Initially hide the overlay (not the container)
+      overlay.style.display = 'none';
       overlay.addEventListener('click', () => {
         document.dispatchEvent(new CustomEvent('closeBookingModal'));
       });

@@ -849,6 +849,141 @@ domReady(() => {
     save: () => null
   });
 
+  // 4b. Client Reviews (inline — no CPT needed)
+  registerBlockType('sg/client-reviews', {
+    title: 'Client Reviews', icon: 'format-chat', category: 'theme',
+    description: 'Toon klantreviews rechtstreeks in het blok — geen apart berichttype nodig.',
+    attributes: {
+      backgroundColor: { type: 'string', default: '#CDD4B2' },
+      textColor:       { type: 'string', default: '#000000' },
+      sectionNum:      { type: 'string', default: '' },
+      eyebrow:         { type: 'string', default: 'Klanten' },
+      heading:         { type: 'string', default: 'In hun woorden' },
+      reviews: {
+        type: 'array',
+        default: [
+          { quote: 'Wat een geweldige ervaring! Jullie hebben precies de sfeer gevangen die we zochten.', name: 'Lisa & Tom', tag: 'Newborn shoot', stars: 5 },
+          { quote: 'Zo ontspannen, zo lief voor de kinderen. De foto\'s zijn prachtig geworden.', name: 'Emma de Vries', tag: 'Gezinsshoot', stars: 5 },
+          { quote: 'Al onze twijfels verdwenen zodra we binnenkwamen. Aanrader voor iedereen!', name: 'Sanne & Pieter', tag: 'Baby shoot', stars: 5 },
+        ]
+      }
+    },
+    edit: ({ attributes, setAttributes }) => {
+      const reviews = attributes.reviews || [];
+
+      const updateReview = (index, key, val) => {
+        const next = [...reviews];
+        next[index] = { ...next[index], [key]: val };
+        setAttributes({ reviews: next });
+      };
+
+      const removeReview = (index) => {
+        const next = [...reviews];
+        next.splice(index, 1);
+        setAttributes({ reviews: next });
+      };
+
+      const addReview = () => {
+        setAttributes({ reviews: [...reviews, { quote: '', name: '', tag: '', stars: 5 }] });
+      };
+
+      const starOptions = [
+        { label: '★★★★★ (5)', value: 5 },
+        { label: '★★★★☆ (4)', value: 4 },
+        { label: '★★★☆☆ (3)', value: 3 },
+      ];
+
+      const reviewEls = reviews.map((review, i) =>
+        el('div', {
+          key: i,
+          style: {
+            marginBottom: '12px', background: '#f8f9f9',
+            padding: '16px', borderRadius: '6px', border: '1px solid #ddd'
+          }
+        },
+          el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' } },
+            el('strong', { style: { fontSize: '13px', color: '#333' } }, `Review ${i + 1}`),
+            el(Button, { isDestructive: true, variant: 'link', onClick: () => removeReview(i) }, '✕ Verwijder')
+          ),
+          el(WysiwygField, {
+            label: 'Citaat',
+            value: review.quote,
+            onChange: v => updateReview(i, 'quote', v),
+            placeholder: 'Wat zei de klant...',
+          }),
+          el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '4px' } },
+            el(TextControl, { label: 'Naam klant', value: review.name, onChange: v => updateReview(i, 'name', v), placeholder: 'Lisa & Tom' }),
+            el(TextControl, { label: 'Shoot type (tag)', value: review.tag, onChange: v => updateReview(i, 'tag', v), placeholder: 'Newborn shoot' }),
+            el('div', null,
+              el('p', { style: { margin: '0 0 6px 0', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', color: '#555' } }, 'Sterren'),
+              el('div', { style: { display: 'flex', gap: '6px' } },
+                starOptions.map(opt =>
+                  el('button', {
+                    key: opt.value,
+                    type: 'button',
+                    onClick: () => updateReview(i, 'stars', opt.value),
+                    style: {
+                      padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer',
+                      border: `1px solid ${(review.stars || 5) === opt.value ? '#c97044' : '#ddd'}`,
+                      background: (review.stars || 5) === opt.value ? '#fef4ee' : '#fff',
+                      color: (review.stars || 5) === opt.value ? '#c97044' : '#888',
+                      fontWeight: (review.stars || 5) === opt.value ? '600' : '400',
+                    }
+                  }, opt.label)
+                )
+              )
+            )
+          )
+        )
+      );
+
+      return el('div', null,
+        el(ColorPanel, {
+          backgroundColor: attributes.backgroundColor,
+          textColor: attributes.textColor,
+          onChangeBackground: v => setAttributes({ backgroundColor: v }),
+          onChangeText: v => setAttributes({ textColor: v }),
+        }),
+        el(BlockEditorForm, { title: 'Client Reviews' },
+          el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } },
+            'Voeg klantreviews rechtstreeks toe. Ze worden opgeslagen in dit blok — geen apart berichttype nodig.'
+          ),
+
+          el(FormField, null,
+            el('div', { style: { display: 'grid', gridTemplateColumns: '80px 1fr', gap: '12px', alignItems: 'end' } },
+              el(TextControl, { label: 'N° label', value: attributes.sectionNum, onChange: v => setAttributes({ sectionNum: v }), placeholder: 'N°05' }),
+              el(TextControl, { label: 'Eyebrow', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) }),
+            )
+          ),
+          el(WysiwygField, { label: 'Titel', value: attributes.heading, onChange: v => setAttributes({ heading: v }) }),
+
+          el('div', { style: { marginTop: '8px' } },
+            el('div', {
+              style: {
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee'
+              }
+            },
+              el('div', null,
+                el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#333', margin: 0 } }, 'Reviews'),
+                el('p', { style: { fontSize: '11px', color: '#999', margin: '4px 0 0' } },
+                  reviews.length === 0
+                    ? 'Nog geen reviews. Klik op "+ Review toevoegen".'
+                    : `${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}`
+                )
+              ),
+              el(Button, { isPrimary: true, onClick: addReview }, '+ Review toevoegen')
+            ),
+            ...reviewEls
+          )
+        )
+      );
+    },
+    save: () => null
+  });
+
+
+
   // 5. Blog Preview
   registerBlockType('sg/blog-preview', {
     title: 'Blog Sneak Peek', icon: 'welcome-widgets-menus', category: 'theme',
@@ -963,29 +1098,144 @@ domReady(() => {
     save: () => null
   });
 
-  // 7. Instagram
+  // 7. Socials Cards (formerly Instagram Grid)
   registerBlockType('sg/instagram', {
-    title: 'Instagram Grid', icon: 'camera', category: 'theme',
+    title: 'Socials Grid', icon: 'share', category: 'theme',
+    description: 'Toon meerdere sociale kanalen (Instagram, TikTok, etc.) elk in een eigen kaart met foto\'s en een CTA knop.',
     attributes: {
       backgroundColor: { type: 'string', default: '#F2E9DE' },
-      textColor: { type: 'string', default: '#000000' },
-      eyebrow: { type: 'string', default: 'Volg ons dagelijks' },
-      handleText: { type: 'string', default: '@studio.glimlach' },
-      handleUrl: { type: 'string', default: '#' },
-      images: { type: 'array', default: [] }
+      textColor:       { type: 'string', default: '#000000' },
+      eyebrow:         { type: 'string', default: 'Volg ons' },
+      heading:         { type: 'string', default: 'Verbinden &amp; ontdekken' },
+      socials: {
+        type: 'array',
+        default: [
+          { platform: 'instagram', handleText: '@studio.glimlach', handleUrl: 'https://www.instagram.com/studio.glimlach', followerCount: '', ctaText: 'Volgen op Instagram', imageCount: 4, images: [] },
+          { platform: 'tiktok',    handleText: '@studioglimlach',   handleUrl: 'https://www.tiktok.com/@studioglimlach',   followerCount: '', ctaText: 'Bekijk op TikTok',    imageCount: 4, images: [] },
+        ]
+      },
+      // Legacy single-platform fields (kept for backwards compat)
+      handleText: { type: 'string', default: '' },
+      handleUrl:  { type: 'string', default: '' },
+      images:     { type: 'array',  default: [] },
     },
     edit: ({ attributes, setAttributes }) => {
-      const updateImage = (index, media) => {
-        const newImages = [...attributes.images];
-        newImages[index] = { id: media.id, url: media.url };
-        setAttributes({ images: newImages });
+      const socials = attributes.socials || [];
+
+      const platformOptions = [
+        { label: 'Instagram', value: 'instagram' },
+        { label: 'TikTok',    value: 'tiktok' },
+        { label: 'Facebook',  value: 'facebook' },
+        { label: 'Pinterest', value: 'pinterest' },
+      ];
+
+      const platformLabel = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', pinterest: 'Pinterest' };
+
+      // ── Helpers ──
+      const addSocial = () =>
+        setAttributes({ socials: [...socials, { platform: 'instagram', handleText: '', handleUrl: '', followerCount: '', ctaText: 'Volgen op Instagram', imageCount: 4, images: [] }] });
+
+      const removeSocial = (si) => {
+        const next = [...socials]; next.splice(si, 1);
+        setAttributes({ socials: next });
       };
-      
-      const imageSelectors = [];
-      for(let i = 0; i < 6; i++) {
-        imageSelectors.push(el(ImageSelect, { key: i, label: `Image ${i + 1}`, value: attributes.images[i], onChange: m => updateImage(i, m) }));
-      }
-      
+
+      const updateSocial = (si, key, val) => {
+        const next = socials.map((s, i) => i === si ? { ...s, [key]: val } : s);
+        setAttributes({ socials: next });
+      };
+
+      const updateSocialImage = (si, ii, media) => {
+        const next = socials.map((s, i) => {
+          if (i !== si) return s;
+          const imgs = [...(s.images || [])];
+          imgs[ii] = { id: media.id, url: media.url };
+          return { ...s, images: imgs };
+        });
+        setAttributes({ socials: next });
+      };
+
+      // ── Build card UI ──
+      const socialEls = socials.map((social, si) => {
+        const count = Math.min(Math.max(social.imageCount != null ? parseInt(social.imageCount) : 4, 0), 4);
+        const imgSlots = [];
+        for (let i = 0; i < count; i++) {
+          imgSlots.push(el(ImageSelect, {
+            key: i,
+            label: `Foto ${i + 1}`,
+            value: (social.images || [])[i],
+            onChange: m => updateSocialImage(si, i, m),
+          }));
+        }
+
+        return el('div', {
+          key: si,
+          style: { border: '1px solid #ddd', borderRadius: '8px', marginBottom: '12px', overflow: 'hidden' }
+        },
+          // Header bar
+          el('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#f5f5f5', borderBottom: '1px solid #ddd' } },
+            el('strong', { style: { fontSize: '13px', flex: 1, color: '#333' } }, `${platformLabel[social.platform] || 'Social'} ${si + 1}`),
+            el(Button, { isDestructive: true, variant: 'secondary', style: { flexShrink: 0 }, onClick: () => removeSocial(si) }, '✕')
+          ),
+
+          el('div', { style: { padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' } },
+
+            // Platform picker + image count
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } },
+              el('div', null,
+                el('p', { style: { margin: '0 0 6px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', color: '#555' } }, 'Platform'),
+                el('div', { style: { display: 'flex', gap: '5px', flexWrap: 'wrap' } },
+                  platformOptions.map(opt =>
+                    el('button', {
+                      key: opt.value, type: 'button',
+                      onClick: () => updateSocial(si, 'platform', opt.value),
+                      style: {
+                        padding: '4px 10px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer',
+                        border: `1px solid ${social.platform === opt.value ? '#1e1e1e' : '#ddd'}`,
+                        background: social.platform === opt.value ? '#1e1e1e' : '#fff',
+                        color: social.platform === opt.value ? '#fff' : '#555',
+                        fontWeight: social.platform === opt.value ? '600' : '400',
+                      }
+                    }, opt.label)
+                  )
+                )
+              ),
+              el('div', null,
+                el('p', { style: { margin: '0 0 6px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', color: '#555' } }, "Aantal foto's"),
+                el('div', { style: { display: 'flex', gap: '5px' } },
+                  [0, 1, 2, 3, 4].map(n =>
+                    el('button', {
+                      key: n, type: 'button',
+                      onClick: () => updateSocial(si, 'imageCount', n),
+                      style: {
+                        padding: '4px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer',
+                        border: `1px solid ${count === n ? '#1e1e1e' : '#ddd'}`,
+                        background: count === n ? '#1e1e1e' : '#fff',
+                        color: count === n ? '#fff' : '#555',
+                      }
+                    }, n === 0 ? 'Geen' : `${n}`)
+                  )
+                )
+              )
+            ),
+
+            // Handle + URL + followers + CTA
+            el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
+              el(TextControl, { label: 'Handle (@)', value: social.handleText, onChange: v => updateSocial(si, 'handleText', v), placeholder: '@studio.glimlach' }),
+              el(TextControl, { label: 'Profiel URL', value: social.handleUrl, onChange: v => updateSocial(si, 'handleUrl', v), placeholder: 'https://instagram.com/...' }),
+              el(TextControl, { label: 'Volgers (optioneel, bijv. "12K")', value: social.followerCount || '', onChange: v => updateSocial(si, 'followerCount', v), placeholder: '12K' }),
+              el(TextControl, { label: 'Knoptekst', value: social.ctaText || '', onChange: v => updateSocial(si, 'ctaText', v), placeholder: 'Volgen op Instagram' }),
+            ),
+
+            // Image slots
+            count > 0 && el('div', null,
+              el('p', { style: { fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', color: '#555', margin: '0 0 8px' } }, `Foto's (${count} — worden 2×${Math.ceil(count/2)} in de kaart)`),
+              el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' } }, ...imgSlots)
+            )
+          )
+        );
+      });
+
       return el('div', null,
         el(ColorPanel, {
           backgroundColor: attributes.backgroundColor,
@@ -993,21 +1243,37 @@ domReady(() => {
           onChangeBackground: v => setAttributes({ backgroundColor: v }),
           onChangeText: v => setAttributes({ textColor: v }),
         }),
-        el(BlockEditorForm, { title: 'Instagram Grid' },
-        el(FormField, null, el(TextControl, { label: 'Eyebrow', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) })),
-        el(FormField, null, el(TextControl, { label: 'Handle Text', value: attributes.handleText, onChange: v => setAttributes({ handleText: v }) })),
-        el(FormField, null, el(TextControl, { label: 'Handle URL', value: attributes.handleUrl, onChange: v => setAttributes({ handleUrl: v }) })),
-        el(FormField, null, 
-          el('p', { style: { fontWeight: 'bold', margin: '0 0 16px 0' } }, 'Grid Images (Up to 6)'),
-          el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' } }, ...imageSelectors)
+        el(BlockEditorForm, { title: 'Socials Cards' },
+          el('p', { style: { color: '#666', marginBottom: '16px', fontStyle: 'italic' } },
+            'Elk sociaal kanaal verschijnt als een eigen kaart met foto\'s, profielinfo en een knop.'
+          ),
+          el(FormField, null,
+            el(TextControl, { label: 'Eyebrow tekst', value: attributes.eyebrow, onChange: v => setAttributes({ eyebrow: v }) }),
+            el(WysiwygField, { label: 'Sectietitel', value: attributes.heading, onChange: v => setAttributes({ heading: v }) })
+          ),
+          el('div', { style: { marginTop: '8px' } },
+            el('div', {
+              style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee' }
+            },
+              el('div', null,
+                el('p', { style: { fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#333', margin: 0 } }, 'Sociale kanalen'),
+                el('p', { style: { fontSize: '11px', color: '#999', margin: '4px 0 0' } },
+                  `${socials.length} ${socials.length === 1 ? 'kanaal' : 'kanalen'}`
+                )
+              ),
+              el(Button, { isPrimary: true, onClick: addSocial }, '+ Kanaal toevoegen')
+            ),
+            ...socialEls
+          )
         )
-      )
-    );
+      );
     },
     save: () => null
   });
 
+
   // 7b. Catching Finisher
+
   registerBlockType('sg/catching-finisher', {
     title: 'Catching Finisher', icon: 'flag', category: 'theme',
     description: 'Een warme afsluiter met scripttitel "Laat ons jullie verhaal vastleggen" en een Plan-afspraak knop.',

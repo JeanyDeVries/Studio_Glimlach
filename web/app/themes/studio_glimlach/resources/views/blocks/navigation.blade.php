@@ -56,9 +56,19 @@
       @endif
     </nav>
 
-    {{-- Mobile hamburger --}}
-    <button class="sg-nav-hamburger" id="sg-nav-toggle" aria-label="Menu openen" aria-expanded="false">
-      <span style="background: {{ $fg }};"></span><span style="background: {{ $fg }};"></span><span style="background: {{ $fg }};"></span>
-    </button>
+    {{-- Mobile: compact CTA + hamburger --}}
+    {{-- The CTA is only visible on mobile (hidden via JS/CSS class toggle) --}}
+    <div class="sg-nav-mobile-actions">
+      @if($ctaIsBooking)
+        <button class="btn sg-nav-cta-mobile" onclick="document.dispatchEvent(new CustomEvent('openBookingModal'))">
+          {{ $ctaText }}
+        </button>
+      @elseif($ctaUrl)
+        <a class="btn sg-nav-cta-mobile" href="{{ $ctaUrl }}">{{ $ctaText }}</a>
+      @endif
+      <button class="sg-nav-hamburger" id="sg-nav-toggle" aria-label="Menu openen" aria-expanded="false">
+        <span style="background: {{ $fg }};"></span><span style="background: {{ $fg }};"></span><span style="background: {{ $fg }};"></span>
+      </button>
+    </div>
   </div>
 </header>
