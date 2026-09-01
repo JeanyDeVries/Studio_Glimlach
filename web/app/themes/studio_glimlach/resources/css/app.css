@@ -476,11 +476,12 @@ button {
   }
 
   .opening-scroll-arrow {
-    bottom: 24px;
+    bottom: 24px; /* arrow stays at bottom of viewport */
   }
 
   .opening-inner {
-    padding-bottom: clamp(24px, 4vw, 48px);
+    /* Extra bottom padding lifts the subtext + button above the arrow */
+    padding-bottom: 96px;
   }
 }
 
@@ -648,6 +649,11 @@ button {
     display: flex;
   }
 
+  /* Remove the CTA button from the mobile topbar — it's in the dropdown menu */
+  .sg-nav-cta-mobile {
+    display: none;
+  }
+
   .sg-nav-links {
     display: none;
     position: absolute;
@@ -687,7 +693,10 @@ button {
   }
 
   .sg-nav-cta {
-    margin-top: 16px;
+    margin-top: 20px;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
   }
 }
 
@@ -1361,17 +1370,19 @@ body:not(:has(.opening)) .pf-full {
 
 
 
-/* CTA button at bottom */
 .social-card-foot {
   padding: 14px 18px;
   border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .social-card-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  flex: 1;
   padding: 11px 16px;
   border-radius: 999px;
   border: 1px solid var(--ink);
@@ -1390,6 +1401,25 @@ body:not(:has(.opening)) .pf-full {
   background: var(--ink);
   color: #fff;
 }
+
+/* "Live" API badge */
+.social-card-api-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #46b450;
+  border: 1px solid rgba(70, 180, 80, 0.35);
+  background: rgba(70, 180, 80, 0.08);
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 
 /* Mobile: 1 column */
 @media (max-width: 480px) {
